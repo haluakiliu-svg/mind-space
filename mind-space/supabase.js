@@ -5,7 +5,7 @@
 // ============================================================
 
 const SUPABASE_URL = 'https://zvsgyqktdvmltyinsvgz.supabase.co';        // 例如 https://xxxx.supabase.co
-const SUPABASE_ANON_KEY = 'zvsgyqktdvmltyinsvgz'; // 很長的 JWT 字串
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2c2d5cWt0ZHZtbHR5aW5zdmd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyOTAzNjQsImV4cCI6MjA4Nzg2NjM2NH0.hj2bS3L4FQhubkBvf7Mh3uOUSDsN7_K4POzQF5CLLWA'; // 很長的 JWT 字串
 
 // Supabase JS SDK (透過 CDN 載入，不需安裝)
 // 在每個 HTML 頁面的 <head> 中已經引入：
