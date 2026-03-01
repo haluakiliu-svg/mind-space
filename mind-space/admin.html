@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>後台管理 — MIND SPACE</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@300;400;700&family=Space+Mono:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<style>
+:root{
+  --black:#0a0a0a;--white:#f0ede8;--orange:#ff4d00;
+  --gray:#141414;--gray2:#1e1e1e;--gray3:#2a2a2a;
+  --text-muted:#555;--green:#1db954;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--black);color:var(--white);font-family:'Noto Sans TC',sans-serif;font-weight:300;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");opacity:0.02;pointer-events:none;z-index:1000;}
+
+/* ── LAYOUT ── */
+.layout{display:flex;min-height:100vh;}
+.sidebar{width:220px;min-height:100vh;background:var(--gray);border-right:1px solid var(--gray3);display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:50;overflow-y:auto;}
+.sidebar-logo{padding:24px;border-bottom:1px solid var(--gray3);flex-shrink:0;}
+.logo-text{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.15em;color:var(--white);display:block;margin-bottom:4px;}
+.logo-sub{font-family:'Space Mono',monospace;font-size:0.5rem;letter-spacing:0.2em;color:var(--orange);text-transform:uppercase;}
+.sidebar-nav{padding:16px 0;flex:1;}
+.sidebar-section{font-family:'Space Mono',monospace;font-size:0.5rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--gray3);padding:12px 24px 6px;}
+.sidebar-nav a{display:flex;align-items:center;gap:10px;padding:10px 24px;font-family:'Space Mono',monospace;font-size:0.58rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-decoration:none;transition:all 0.2s;border-left:2px solid transparent;}
+.sidebar-nav a:hover,.sidebar-nav a.active{color:var(--white);background:var(--gray2);border-left-color:var(--orange);}
+.nav-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0;}
+.sidebar-footer{padding:16px 24px;border-top:1px solid var(--gray3);}
+.sidebar-footer a{font-family:'Space Mono',monospace;font-size:0.55rem;letter-spacing:0.15em;color:var(--text-muted);text-decoration:none;text-transform:uppercase;transition:color 0.2s;}
+.sidebar-footer a:hover{color:var(--orange);}
+.main{margin-left:220px;padding:40px;flex:1;min-width:0;}
+.view{display:none;}
+.view.active{display:block;}
+
+/* ── COMPONENTS ── */
+.main-header{margin-bottom:32px;}
+.main-header h1{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:0.08em;margin-bottom:6px;}
+.main-header p{font-family:'Space Mono',monospace;font-size:0.58rem;color:var(--text-muted);letter-spacing:0.15em;}
+.alert{padding:12px 18px;font-family:'Space Mono',monospace;font-size:0.62rem;letter-spacing:0.08em;margin-bottom:20px;display:none;}
+.alert.error{background:rgba(255,50,50,0.1);border:1px solid rgba(255,50,50,0.3);color:#ff6666;}
+.alert.show{display:block;}
+.card{background:var(--gray2);border:1px solid var(--gray3);padding:32px;}
+.section-title-label{font-family:'Space Mono',monospace;font-size:0.58rem;letter-spacing:0.25em;color:var(--orange);text-transform:uppercase;margin-bottom:20px;display:flex;align-items:center;gap:12px;}
+.section-title-label::after{content:'';flex:1;height:1px;background:var(--gray3);}
+.form-group{margin-bottom:20px;}
+.form-label{font-family:'Space Mono',monospace;font-size:0.58rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:7px;}
+.form-input,.form-select{width:100%;background:var(--gray);border:1px solid var(--gray3);color:var(--white);font-family:'Noto Sans TC',sans-serif;font-size:0.85rem;padding:10px 14px;outline:none;transition:border-color 0.2s;appearance:none;}
+.form-input:focus,.form-select:focus{border-color:var(--orange);}
+.form-select option{background:var(--gray);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.form-actions{display:flex;gap:12px;align-items:center;margin-top:28px;flex-wrap:wrap;}
+.btn-primary{background:var(--orange);color:var(--black);border:none;padding:12px 28px;font-family:'Space Mono',monospace;font-size:0.62rem;letter-spacing:0.18em;text-transform:uppercase;cursor:pointer;transition:background 0.2s;white-space:nowrap;}
+.btn-primary:hover{background:#ff6620;}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed;}
+.btn-secondary{background:transparent;color:var(--text-muted);border:1px solid var(--gray3);padding:12px 20px;font-family:'Space Mono',monospace;font-size:0.58rem;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.btn-secondary:hover{border-color:var(--white);color:var(--white);}
+.save-ok{font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--green);letter-spacing:0.1em;opacity:0;transition:opacity 0.3s;}
+.save-ok.show{opacity:1;}
+
+/* ── RICH TEXT EDITOR ── */
+.editor-toolbar{display:flex;flex-wrap:wrap;gap:4px;padding:10px 12px;background:var(--gray);border:1px solid var(--gray3);border-bottom:none;}
+.tb-btn{background:var(--gray2);border:1px solid var(--gray3);color:var(--white);padding:5px 10px;font-size:0.75rem;cursor:pointer;transition:all 0.15s;min-width:32px;text-align:center;font-family:'Space Mono',monospace;}
+.tb-btn:hover{background:var(--gray3);border-color:var(--orange);}
+.tb-btn.active{background:rgba(255,77,0,0.2);border-color:var(--orange);color:var(--orange);}
+.tb-sep{width:1px;background:var(--gray3);margin:0 4px;align-self:stretch;}
+.tb-select{background:var(--gray2);border:1px solid var(--gray3);color:var(--white);padding:5px 8px;font-family:'Space Mono',monospace;font-size:0.65rem;cursor:pointer;outline:none;}
+.tb-color{width:32px;height:30px;border:1px solid var(--gray3);background:none;cursor:pointer;padding:2px;}
+.editor-area{min-height:220px;background:var(--gray);border:1px solid var(--gray3);padding:16px;outline:none;font-size:0.9rem;line-height:1.85;color:var(--white);}
+.editor-area:focus{border-color:var(--orange);}
+.editor-area[placeholder]:empty::before{content:attr(placeholder);color:var(--text-muted);pointer-events:none;}
+
+/* ── UPLOAD ── */
+.upload-zone{border:1px dashed var(--gray3);padding:28px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;}
+.upload-zone:hover{border-color:var(--orange);background:rgba(255,77,0,0.03);}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-icon{font-size:28px;opacity:0.3;display:block;margin-bottom:10px;}
+.upload-label{font-family:'Space Mono',monospace;font-size:0.58rem;letter-spacing:0.12em;color:var(--text-muted);}
+.upload-preview{max-width:100%;max-height:180px;margin-top:12px;display:none;border:1px solid var(--gray3);}
+.upload-bar-wrap{display:none;margin-top:10px;}
+.upload-bar{height:2px;background:var(--orange);width:0%;transition:width 0.3s;}
+.upload-status-txt{font-family:'Space Mono',monospace;font-size:0.55rem;color:var(--text-muted);margin-top:5px;}
+
+/* ── MUSIC EXTRAS ── */
+.music-extras{display:none;}
+.music-extras.on{display:block;}
+.mood-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px;}
+.mood-chip{background:var(--gray);border:1px solid var(--gray3);color:var(--text-muted);font-family:'Space Mono',monospace;font-size:0.58rem;padding:6px 13px;cursor:pointer;transition:all 0.2s;}
+.mood-chip:hover,.mood-chip.on{background:rgba(255,77,0,0.15);border-color:var(--orange);color:var(--orange);}
+
+/* ── TABLE ── */
+.data-table{width:100%;border-collapse:collapse;}
+.data-table th{font-family:'Space Mono',monospace;font-size:0.52rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);padding:10px 14px;text-align:left;border-bottom:1px solid var(--gray3);}
+.data-table td{padding:14px;border-bottom:1px solid var(--gray2);font-size:0.8rem;vertical-align:middle;}
+.data-table tr:hover td{background:var(--gray2);}
+.badge{display:inline-block;padding:3px 8px;font-family:'Space Mono',monospace;font-size:0.48rem;letter-spacing:0.1em;text-transform:uppercase;}
+.b-music{background:rgba(29,185,84,0.15);color:var(--green);}
+.b-explore{background:rgba(0,120,255,0.15);color:#4d9fff;}
+.b-tech{background:rgba(180,255,0,0.12);color:#b4ff00;}
+.b-marketing{background:rgba(255,0,200,0.12);color:#ff4db8;}
+.act-btn{background:none;border:none;cursor:pointer;font-family:'Space Mono',monospace;font-size:0.52rem;letter-spacing:0.1em;text-transform:uppercase;padding:4px 8px;transition:color 0.2s;color:var(--text-muted);}
+.act-btn:hover{color:#ff4444;}
+.top-bar{display:flex;justify-content:flex-end;margin-bottom:20px;}
+.empty-row{text-align:center;padding:50px;font-family:'Space Mono',monospace;font-size:0.62rem;color:var(--text-muted);letter-spacing:0.1em;}
+
+/* ── STATS ── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;margin-bottom:32px;}
+.stat-box{background:var(--gray2);padding:20px;border-top:2px solid var(--orange);}
+.stat-num{font-family:'Bebas Neue',sans-serif;font-size:2.6rem;color:var(--white);margin-bottom:3px;}
+.stat-lbl{font-family:'Space Mono',monospace;font-size:0.52rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-muted);}
+
+/* ── APPEARANCE ── */
+.ap-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:960px;}
+.preview-box{background:var(--gray2);border:1px solid var(--gray3);padding:16px;margin-bottom:24px;max-width:960px;}
+.preview-label{font-family:'Space Mono',monospace;font-size:0.52rem;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;margin-bottom:12px;}
+.preview-stage{padding:28px 32px;min-height:140px;transition:background 0.3s;position:relative;overflow:hidden;}
+.color-presets{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;}
+.color-chip{width:28px;height:28px;border:2px solid transparent;cursor:pointer;transition:border-color 0.2s;border-radius:2px;}
+.color-chip:hover{border-color:var(--white);}
+.color-row{display:flex;gap:10px;align-items:center;}
+.color-hex{flex:1;}
+.section-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.section-card{background:var(--gray);border:1px solid var(--gray3);padding:16px;}
+.section-card-label{font-family:'Space Mono',monospace;font-size:0.52rem;color:var(--orange);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:12px;}
+.font-preview{margin-top:8px;padding:10px 12px;background:var(--gray);border:1px solid var(--gray3);font-size:1rem;}
+
+/* ── CONFIG BANNER ── */
+.cfg-banner{background:rgba(255,140,0,0.08);border:1px solid rgba(255,140,0,0.3);color:#ffa033;padding:14px 20px;margin-bottom:28px;font-family:'Space Mono',monospace;font-size:0.62rem;line-height:1.8;display:none;}
+.cfg-banner.on{display:block;}
+
+@media(max-width:900px){
+  .sidebar{width:56px;}
+  .sidebar-logo .logo-text,.sidebar-logo .logo-sub,.sidebar-nav a span,.sidebar-section,.sidebar-footer{display:none;}
+  .main{margin-left:56px;padding:20px;}
+  .sidebar-nav a{justify-content:center;padding:14px;}
+  .stats-grid,.ap-grid,.section-cards{grid-template-columns:1fr 1fr;}
+  .form-row{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-text">MIND SPACE</span>
+    <span class="logo-sub">Admin Panel</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="sidebar-section">內容</div>
+    <a href="#" class="active" onclick="return go('dashboard',this)"><span class="nav-icon">◈</span><span>Dashboard</span></a>
+    <a href="#" onclick="return go('new-post',this)"><span class="nav-icon">✦</span><span>新增文章</span></a>
+    <a href="#" onclick="return go('all-posts',this)"><span class="nav-icon">≡</span><span>所有文章</span></a>
+    <div class="sidebar-section">設計</div>
+    <a href="#" onclick="return go('appearance',this)"><span class="nav-icon">◐</span><span>外觀設定</span></a>
+    <a href="#" onclick="return go('sections',this)"><span class="nav-icon">⊞</span><span>區塊設定</span></a>
+    <div class="sidebar-section">系統</div>
+    <a href="#" onclick="return go('settings',this)"><span class="nav-icon">⚙</span><span>連線設定</span></a>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="index.html">← 回前台</a>
+  </div>
+</aside>
+
+<!-- ══ MAIN ══ -->
+<main class="main">
+  <div class="cfg-banner" id="cfgBanner">
+    ⚠ 尚未設定 Supabase。請前往「連線設定」填入 URL 和 API Key，或直接修改 <code>supabase.js</code>。
+  </div>
+
+  <!-- ── DASHBOARD ── -->
+  <div class="view active" id="view-dashboard">
+    <div class="main-header"><h1>DASHBOARD</h1><p>// 內容概覽</p></div>
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-box"><div class="stat-num">—</div><div class="stat-lbl">♪ 音樂</div></div>
+      <div class="stat-box"><div class="stat-num">—</div><div class="stat-lbl">◎ 探索</div></div>
+      <div class="stat-box"><div class="stat-num">—</div><div class="stat-lbl">◈ 科技投資</div></div>
+      <div class="stat-box"><div class="stat-num">—</div><div class="stat-lbl">◉ 行銷</div></div>
+    </div>
+    <div class="top-bar"><button class="btn-primary" onclick="go('new-post',document.querySelector('.sidebar-nav a:nth-child(3)'))">✦ 新增文章</button></div>
+    <table class="data-table">
+      <thead><tr><th>標題</th><th>分類</th><th>日期</th><th>操作</th></tr></thead>
+      <tbody id="dashBody"><tr><td colspan="4" class="empty-row">載入中...</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- ── NEW POST ── -->
+  <div class="view" id="view-new-post">
+    <div class="main-header"><h1>新增文章</h1><p>// Create New Post</p></div>
+    <div class="alert error" id="postErr"></div>
+    <div class="card">
+
+      <div class="form-group">
+        <label class="form-label">分類 Category</label>
+        <select class="form-select" id="pCat" onchange="onCatChange()">
+          <option value="music">♪ 我在聽音樂</option>
+          <option value="explore">◎ 我在探索世界</option>
+          <option value="tech">◈ 科技投資思考</option>
+          <option value="marketing">◉ 行銷專案思考</option>
+        </select>
+      </div>
+
+      <!-- Music extras -->
+      <div class="music-extras on" id="musicExtras">
+        <p class="section-title-label">音樂資訊</p>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">歌曲名稱</label>
+            <input class="form-input" id="pSong" placeholder="e.g. Bohemian Rhapsody">
+          </div>
+          <div class="form-group">
+            <label class="form-label">藝人</label>
+            <input class="form-input" id="pArtist" placeholder="e.g. Queen">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">心情標籤</label>
+          <div class="mood-row">
+            <button class="mood-chip" type="button" onclick="pickMood(this,'沉思中')">沉思中</button>
+            <button class="mood-chip" type="button" onclick="pickMood(this,'亢奮')">亢奮</button>
+            <button class="mood-chip" type="button" onclick="pickMood(this,'憂鬱')">憂鬱</button>
+            <button class="mood-chip" type="button" onclick="pickMood(this,'平靜')">平靜</button>
+            <button class="mood-chip" type="button" onclick="pickMood(this,'懷念')">懷念</button>
+            <button class="mood-chip" type="button" onclick="pickMood(this,'興奮')">興奮</button>
+            <button class="mood-chip" type="button" onclick="pickMood(this,'迷失')">迷失</button>
+            <button class="mood-chip" type="button" onclick="pickMood(this,'釋然')">釋然</button>
+          </div>
+          <input class="form-input" id="pMood" placeholder="或自行輸入心情...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">專輯封面（上傳圖片 或 貼上 URL）</label>
+          <div class="upload-zone" style="margin-bottom:10px;">
+            <input type="file" accept="image/*" id="pCoverFile" onchange="onCoverSelect(event)">
+            <span class="upload-icon">🎵</span>
+            <span class="upload-label">點擊上傳封面圖片（JPG / PNG）</span>
+            <img class="upload-preview" id="pCoverPreview" alt="">
+            <div class="upload-bar-wrap" id="pCoverBarWrap">
+              <div class="upload-bar" id="pCoverBar"></div>
+              <div class="upload-status-txt" id="pCoverStatus"></div>
+            </div>
+          </div>
+          <button type="button" class="btn-secondary" id="pCoverDeleteBtn" onclick="removeCover()" style="display:none;margin-bottom:8px;font-size:0.53rem;padding:6px 14px;border-color:rgba(255,80,80,0.3);color:#ff6666;">✕ 移除封面</button>
+          <input class="form-input" id="pCover" placeholder="或直接貼上封面圖 URL（e.g. https://i.scdn.co/image/...）" oninput="onCoverUrlInput()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Spotify 歌曲連結（選填）— 嵌入播放器</label>
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <input class="form-input" id="pSpotify" placeholder="https://open.spotify.com/track/... 或 album/... 或 playlist/..." oninput="previewSpotify()">
+            <button class="btn-secondary" type="button" onclick="previewSpotify()" style="white-space:nowrap;padding:10px 16px;font-size:0.55rem;">預覽</button>
+          </div>
+          <div id="spotifyPreviewWrap" style="display:none;margin-top:10px;">
+            <iframe id="spotifyPreviewPlayer" src="" height="152" frameBorder="0" allow="autoplay;clipboard-write;encrypted-media;fullscreen;picture-in-picture" style="width:100%;border:none;background:#000;"></iframe>
+          </div>
+          <p style="font-family:'Space Mono',monospace;font-size:0.5rem;color:var(--text-muted);margin-top:6px;line-height:1.7;">💡 支援 track / album / playlist 連結。貼上後點「預覽」確認播放器正常。</p>
+        </div>
+      </div>
+
+      <p class="section-title-label">文章內容</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">標題 <span style="color:var(--orange)">*</span></label>
+          <input class="form-input" id="pTitle" placeholder="文章標題...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">標籤（選填）</label>
+          <input class="form-input" id="pTag" placeholder="e.g. 樂評 / 旅行日記">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">內文 <span style="color:var(--orange)">*</span>（支援格式化）</label>
+        <!-- RICH TEXT TOOLBAR -->
+        <div class="editor-toolbar">
+          <!-- 字體大小 -->
+          <select class="tb-select" onchange="cmd('fontSize',this.value)" title="字體大小">
+            <option value="">大小</option>
+            <option value="1">極小</option>
+            <option value="2">小</option>
+            <option value="3">標準</option>
+            <option value="4">大</option>
+            <option value="5">較大</option>
+            <option value="6">特大</option>
+            <option value="7">最大</option>
+          </select>
+          <div class="tb-sep"></div>
+          <!-- 粗斜底 -->
+          <button class="tb-btn" onclick="cmd('bold')" title="粗體"><b>B</b></button>
+          <button class="tb-btn" onclick="cmd('italic')" title="斜體"><i>I</i></button>
+          <button class="tb-btn" onclick="cmd('underline')" title="底線"><u>U</u></button>
+          <button class="tb-btn" onclick="cmd('strikeThrough')" title="刪除線"><s>S</s></button>
+          <div class="tb-sep"></div>
+          <!-- 文字顏色 -->
+          <label style="display:flex;align-items:center;gap:4px;font-family:'Space Mono',monospace;font-size:0.55rem;color:var(--text-muted);cursor:pointer;">
+            A <input type="color" class="tb-color" value="#f0ede8" oninput="cmd('foreColor',this.value)" title="文字顏色">
+          </label>
+          <label style="display:flex;align-items:center;gap:4px;font-family:'Space Mono',monospace;font-size:0.55rem;color:var(--text-muted);cursor:pointer;">
+            HL <input type="color" class="tb-color" value="#ff4d00" oninput="cmd('hiliteColor',this.value)" title="螢光標記">
+          </label>
+          <div class="tb-sep"></div>
+          <!-- 對齊 -->
+          <button class="tb-btn" onclick="cmd('justifyLeft')" title="靠左">≡</button>
+          <button class="tb-btn" onclick="cmd('justifyCenter')" title="置中">≡</button>
+          <button class="tb-btn" onclick="cmd('justifyRight')" title="靠右">≡</button>
+          <div class="tb-sep"></div>
+          <!-- 清單 -->
+          <button class="tb-btn" onclick="cmd('insertUnorderedList')" title="項目清單">• —</button>
+          <button class="tb-btn" onclick="cmd('insertOrderedList')" title="編號清單">1.</button>
+          <div class="tb-sep"></div>
+          <!-- 連結 -->
+          <button class="tb-btn" onclick="insertLink()" title="插入連結">🔗</button>
+          <!-- 清除格式 -->
+          <button class="tb-btn" onclick="cmd('removeFormat')" title="清除格式" style="color:var(--text-muted);">✕</button>
+        </div>
+        <div class="editor-area" id="pContent" contenteditable="true" placeholder="寫下你的思考、感受、分析...&#10;支援粗體、顏色、大小等格式。"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">上傳圖片</label>
+        <div class="upload-zone" id="pImgZone">
+          <input type="file" accept="image/*" id="pImgFile" onchange="onImgSelect(event)">
+          <span class="upload-icon">⊕</span>
+          <span class="upload-label">點擊或拖拉上傳圖片</span>
+          <img class="upload-preview" id="pImgPreview" alt="">
+          <div class="upload-bar-wrap" id="pImgBarWrap">
+            <div class="upload-bar" id="pImgBar"></div>
+            <div class="upload-status-txt" id="pImgStatus"></div>
+          </div>
+        </div>
+        <button type="button" class="btn-secondary" id="pImgDeleteBtn" onclick="removeImg()" style="display:none;margin-top:8px;font-size:0.53rem;padding:6px 14px;border-color:rgba(255,80,80,0.3);color:#ff6666;">✕ 移除圖片</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">影片連結 YouTube URL</label>
+        <input class="form-input" id="pVideo" placeholder="https://www.youtube.com/watch?v=...">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-primary" id="postBtn" onclick="submitPost()">發布文章</button>
+        <button class="btn-secondary" onclick="clearPost()">清除</button>
+        <span class="save-ok" id="postOk">✓ 發布成功！</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ALL POSTS ── -->
+  <div class="view" id="view-all-posts">
+    <div class="main-header"><h1>所有文章</h1><p>// All Posts</p></div>
+    <div class="top-bar"><button class="btn-primary" onclick="go('new-post',document.querySelector('.sidebar-nav a:nth-child(3)'))">✦ 新增文章</button></div>
+    <table class="data-table">
+      <thead><tr><th>標題</th><th>分類</th><th>標籤</th><th>日期</th><th>操作</th></tr></thead>
+      <tbody id="allBody"><tr><td colspan="5" class="empty-row">載入中...</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- ── APPEARANCE ── -->
+  <div class="view" id="view-appearance">
+    <div class="main-header"><h1>外觀設定</h1><p>// Appearance — 儲存後重新整理前台即可套用</p></div>
+
+    <!-- 即時預覽 -->
+    <div class="preview-box">
+      <div class="preview-label">即時預覽 Live Preview</div>
+      <div class="preview-stage" id="apPreview">
+        <p id="apPrevEye" style="font-family:'Space Mono',monospace;font-size:0.6rem;letter-spacing:0.3em;text-transform:uppercase;margin-bottom:10px;"></p>
+        <h2 id="apPrevTitle" style="font-family:'Bebas Neue',sans-serif;font-size:2.8rem;line-height:0.95;margin-bottom:14px;"></h2>
+        <p id="apPrevDesc" style="font-size:0.82rem;line-height:1.8;color:#666;max-width:340px;"></p>
+      </div>
+    </div>
+
+    <!-- Hero 封面圖 -->
+    <div class="card" style="max-width:960px;margin-bottom:20px;">
+      <p class="section-title-label">首頁 Hero 封面圖片</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+        <div>
+          <div class="form-group">
+            <label class="form-label">上傳封面圖片（建議 1920×1080 以上）</label>
+            <div class="upload-zone">
+              <input type="file" accept="image/*" id="heroImgFile" onchange="onHeroImg(event)">
+              <span class="upload-icon">⊕</span>
+              <span class="upload-label">點擊或拖拉上傳</span>
+              <img class="upload-preview" id="heroImgPreview" alt="">
+              <div class="upload-bar-wrap" id="heroBarWrap"><div class="upload-bar" id="heroBar"></div><div class="upload-status-txt" id="heroBarSt"></div></div>
+            </div>
+            <button class="btn-secondary" style="margin-top:10px;font-size:0.55rem;padding:7px 14px;" onclick="clearHeroImg()">移除圖片（恢復漸層）</button>
+          </div>
+        </div>
+        <div>
+          <div id="heroPosWrap" style="display:none;">
+            <label class="form-label">點擊圖片設定焦點位置</label>
+            <p style="font-family:'Space Mono',monospace;font-size:0.52rem;color:var(--text-muted);line-height:1.7;margin-bottom:10px;">焦點影響圖片被裁切時顯示哪個部分（例如讓人臉不被裁掉）</p>
+            <div id="heroPosBox" style="position:relative;width:100%;padding-bottom:52%;background:var(--gray);border:1px solid var(--gray3);overflow:hidden;cursor:crosshair;" onclick="setHeroPos(event)">
+              <img id="heroPosImg" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;">
+              <div id="heroPosMarker" style="position:absolute;width:18px;height:18px;border:2px solid var(--orange);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;display:none;box-shadow:0 0 0 4px rgba(255,77,0,0.25);"></div>
+            </div>
+            <p style="font-family:'Space Mono',monospace;font-size:0.5rem;color:var(--text-muted);margin-top:7px;">焦點 — X:<span id="posXVal">50</span>% Y:<span id="posYVal">50</span>%</p>
+          </div>
+          <div id="heroPosEmpty" style="padding:32px;background:var(--gray);border:1px solid var(--gray3);text-align:center;">
+            <p style="font-family:'Space Mono',monospace;font-size:0.58rem;color:var(--text-muted);letter-spacing:0.1em;">上傳圖片後可在此點擊設定焦點位置</p>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:16px;">
+        <button class="btn-primary" onclick="saveHeroImg()">儲存 Hero 圖片</button>
+        <span class="save-ok" id="heroImgOk">✓ 已儲存！</span>
+      </div>
+    </div>
+
+    <!-- Music 頁面 Hero 背景圖 -->
+    <div class="card" style="max-width:960px;margin-bottom:20px;">
+      <p class="section-title-label">♪ 音樂頁面 — Hero 靜態背景圖</p>
+      <p style="font-family:'Space Mono',monospace;font-size:0.55rem;color:var(--text-muted);line-height:1.8;margin-bottom:20px;">
+        設定音樂頁面的全螢幕背景圖。當文章有封面圖時，系統會優先顯示文章封面；此圖片作為無文章時的預設背景。
+      </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+        <div>
+          <div class="form-group">
+            <label class="form-label">上傳音樂頁背景圖（建議 1920×1080 以上）</label>
+            <div class="upload-zone">
+              <input type="file" accept="image/*" id="musicHeroFile" onchange="onMusicHeroImg(event)">
+              <span class="upload-icon">♪</span>
+              <span class="upload-label">點擊或拖拉上傳</span>
+              <img class="upload-preview" id="musicHeroPreview" alt="">
+              <div class="upload-bar-wrap" id="musicHeroBarWrap"><div class="upload-bar" id="musicHeroBar"></div><div class="upload-status-txt" id="musicHeroBarSt"></div></div>
+            </div>
+            <button class="btn-secondary" style="margin-top:10px;font-size:0.55rem;padding:7px 14px;" onclick="clearMusicHeroImg()">移除背景圖</button>
+          </div>
+        </div>
+        <div>
+          <div id="musicHeroPosWrap" style="display:none;">
+            <label class="form-label">焦點位置</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div>
+                <label class="form-label" style="font-size:0.5rem;">水平 X: <span id="musicHeroPosXVal">50</span>%</label>
+                <input type="range" min="0" max="100" value="50" id="musicHeroPosX"
+                  oninput="document.getElementById('musicHeroPosXVal').textContent=this.value"
+                  style="width:100%;accent-color:var(--orange);cursor:pointer;">
+              </div>
+              <div>
+                <label class="form-label" style="font-size:0.5rem;">垂直 Y: <span id="musicHeroPosYVal">50</span>%</label>
+                <input type="range" min="0" max="100" value="50" id="musicHeroPosY"
+                  oninput="document.getElementById('musicHeroPosYVal').textContent=this.value"
+                  style="width:100%;accent-color:var(--orange);cursor:pointer;">
+              </div>
+            </div>
+          </div>
+          <div id="musicHeroPosEmpty" style="padding:32px;background:var(--gray);border:1px solid var(--gray3);text-align:center;">
+            <p style="font-family:'Space Mono',monospace;font-size:0.58rem;color:var(--text-muted);letter-spacing:0.1em;">上傳圖片後可調整焦點位置</p>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:16px;">
+        <button class="btn-primary" onclick="saveMusicHeroImg()">儲存音樂頁背景</button>
+        <span class="save-ok" id="musicHeroOk">✓ 已儲存！</span>
+      </div>
+    </div>
+
+    <div class="ap-grid">
+
+      <!-- 左欄：基本資訊 + 字體 -->
+      <div style="display:flex;flex-direction:column;gap:20px;">
+        <div class="card">
+          <p class="section-title-label">網站基本資訊</p>
+          <div class="form-group">
+            <label class="form-label">網站名稱</label>
+            <input class="form-input" id="ap_name" placeholder="MIND SPACE" oninput="apPreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">首頁副標語（小字）</label>
+            <input class="form-input" id="ap_eye" placeholder="// 個人思想空間" oninput="apPreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">首頁大標題 第一行</label>
+            <input class="form-input" id="ap_h1" placeholder="THINK" oninput="apPreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">首頁大標題 第二行</label>
+            <input class="form-input" id="ap_h2" placeholder="FEEL" oninput="apPreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">首頁大標題 第三行（強調色）</label>
+            <input class="form-input" id="ap_h3" placeholder="GROW" oninput="apPreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">首頁描述文字</label>
+            <input class="form-input" id="ap_desc" placeholder="音樂、探索、科技、行銷..." oninput="apPreview()">
+          </div>
+        </div>
+
+        <div class="card">
+          <p class="section-title-label">字體設定</p>
+          <div class="form-group">
+            <label class="form-label">標題字體</label>
+            <select class="form-select" id="ap_titleFont" onchange="apPreview()">
+              <option value="Bebas Neue">Bebas Neue（預設，全大寫粗獷）</option>
+              <option value="Anton">Anton（緊湊有力）</option>
+              <option value="Oswald">Oswald（修長現代）</option>
+              <option value="Black Han Sans">Black Han Sans（韓式粗黑）</option>
+              <option value="Righteous">Righteous（復古圓潤）</option>
+            </select>
+            <div class="font-preview" id="apFontPreview" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.05em;color:var(--white);">MIND SPACE 思想空間</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">內文字體大小</label>
+            <select class="form-select" id="ap_bodySize">
+              <option value="14px">小（14px）</option>
+              <option value="15px">標準（15px）</option>
+              <option value="16px" selected>大（16px）</option>
+              <option value="18px">較大（18px）</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">行距</label>
+            <select class="form-select" id="ap_lineHeight">
+              <option value="1.6">緊湊（1.6）</option>
+              <option value="1.8" selected>標準（1.8）</option>
+              <option value="2.0">寬鬆（2.0）</option>
+              <option value="2.2">非常寬鬆（2.2）</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右欄：顏色 -->
+      <div class="card">
+        <p class="section-title-label">主題顏色</p>
+        <div class="form-group">
+          <label class="form-label">強調色（按鈕、標題色等）</label>
+          <div class="color-row" style="margin-bottom:10px;">
+            <input type="color" id="ap_accent" value="#ff4d00" oninput="onAc()" style="width:44px;height:38px;border:1px solid var(--gray3);background:none;cursor:pointer;padding:2px;">
+            <input class="form-input color-hex" id="ap_accentHex" placeholder="#ff4d00" oninput="onAcHex()">
+          </div>
+          <div class="color-presets">
+            <div class="color-chip" style="background:#ff4d00;" onclick="setAc('#ff4d00')" title="橘紅"></div>
+            <div class="color-chip" style="background:#7c3aed;" onclick="setAc('#7c3aed')" title="紫色"></div>
+            <div class="color-chip" style="background:#0ea5e9;" onclick="setAc('#0ea5e9')" title="藍色"></div>
+            <div class="color-chip" style="background:#10b981;" onclick="setAc('#10b981')" title="綠色"></div>
+            <div class="color-chip" style="background:#f59e0b;" onclick="setAc('#f59e0b')" title="金色"></div>
+            <div class="color-chip" style="background:#ec4899;" onclick="setAc('#ec4899')" title="粉色"></div>
+            <div class="color-chip" style="background:#ef4444;" onclick="setAc('#ef4444')" title="紅色"></div>
+            <div class="color-chip" style="background:#ffffff;border:1px solid var(--gray3);" onclick="setAc('#ffffff')" title="白色"></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">背景色</label>
+          <div class="color-row" style="margin-bottom:10px;">
+            <input type="color" id="ap_bg" value="#0a0a0a" oninput="onBg()" style="width:44px;height:38px;border:1px solid var(--gray3);background:none;cursor:pointer;padding:2px;">
+            <input class="form-input color-hex" id="ap_bgHex" placeholder="#0a0a0a" oninput="onBgHex()">
+          </div>
+          <div class="color-presets">
+            <div class="color-chip" style="background:#0a0a0a;border:1px solid var(--gray3);" onclick="setBg('#0a0a0a')" title="深黑（預設）"></div>
+            <div class="color-chip" style="background:#0f0f1a;" onclick="setBg('#0f0f1a')" title="深藍黑"></div>
+            <div class="color-chip" style="background:#0d0a00;" onclick="setBg('#0d0a00')" title="深棕黑"></div>
+            <div class="color-chip" style="background:#0a0d0a;" onclick="setBg('#0a0d0a')" title="深綠黑"></div>
+            <div class="color-chip" style="background:#1a1a2e;" onclick="setBg('#1a1a2e')" title="海軍藍"></div>
+            <div class="color-chip" style="background:#f0ede8;border:1px solid var(--gray3);" onclick="setBg('#f0ede8')" title="米白（淺色模式）"></div>
+            <div class="color-chip" style="background:#fafafa;border:1px solid var(--gray3);" onclick="setBg('#fafafa')" title="純白"></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">文字色</label>
+          <div class="color-row">
+            <input type="color" id="ap_text" value="#f0ede8" oninput="apPreview()" style="width:44px;height:38px;border:1px solid var(--gray3);background:none;cursor:pointer;padding:2px;">
+            <input class="form-input color-hex" id="ap_textHex" placeholder="#f0ede8" oninput="onTextHex()">
+          </div>
+          <div class="color-presets" style="margin-top:10px;">
+            <div class="color-chip" style="background:#f0ede8;border:1px solid var(--gray3);" onclick="setTxt('#f0ede8')" title="米白（預設）"></div>
+            <div class="color-chip" style="background:#ffffff;border:1px solid var(--gray3);" onclick="setTxt('#ffffff')" title="純白"></div>
+            <div class="color-chip" style="background:#0a0a0a;" onclick="setTxt('#0a0a0a')" title="深黑（淺色模式用）"></div>
+          </div>
+        </div>
+
+        <!-- 套用效果預覽 -->
+        <div style="margin-top:20px;padding:16px;background:var(--gray);border:1px solid var(--gray3);">
+          <p style="font-family:'Space Mono',monospace;font-size:0.55rem;color:var(--text-muted);margin-bottom:10px;letter-spacing:0.1em;">COLOR COMBO PREVIEW</p>
+          <div id="colorCombo" style="padding:16px;display:flex;flex-direction:column;gap:6px;">
+            <span id="cc_accent" style="font-family:'Space Mono',monospace;font-size:0.65rem;letter-spacing:0.2em;">// 強調色文字</span>
+            <span id="cc_btn" style="display:inline-block;padding:8px 16px;font-family:'Space Mono',monospace;font-size:0.65rem;letter-spacing:0.15em;align-self:flex-start;">VIEW PROJECT →</span>
+            <span id="cc_text" style="font-size:0.82rem;line-height:1.7;">這是一段示範內文文字，看看在你選擇的背景和文字色搭配下是否清晰易讀。</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions" style="max-width:960px;margin-top:20px;">
+      <button class="btn-primary" onclick="saveAp()">儲存外觀設定</button>
+      <button class="btn-secondary" onclick="resetAp()">恢復所有預設值</button>
+      <span class="save-ok" id="apOk">✓ 已儲存！重新整理前台頁面即可看到變化。</span>
+    </div>
+  </div>
+
+  <!-- ── SECTIONS ── -->
+  <div class="view" id="view-sections">
+    <div class="main-header"><h1>區塊設定</h1><p>// 首頁四大區塊的標題、描述與背景圖片</p></div>
+    <div class="section-cards" id="sectionCards">
+      <!-- Generated by JS -->
+    </div>
+    <div class="form-actions" style="margin-top:20px;">
+      <button class="btn-primary" onclick="saveSections()">儲存區塊設定</button>
+      <span class="save-ok" id="secOk">✓ 已儲存！重新整理前台頁面即可看到變化。</span>
+    </div>
+  </div>
+
+  <!-- ── SETTINGS ── -->
+  <div class="view" id="view-settings">
+    <div class="main-header"><h1>連線設定</h1><p>// Supabase Connection</p></div>
+    <div class="card" style="max-width:600px;">
+      <div class="form-group">
+        <label class="form-label">Supabase URL</label>
+        <input class="form-input" id="cfgUrl" placeholder="https://xxxx.supabase.co">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Supabase Anon Key</label>
+        <input class="form-input" id="cfgKey" placeholder="eyJh...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Spotify 預設播放清單 URL</label>
+        <input class="form-input" id="cfgSpotify" placeholder="https://open.spotify.com/playlist/...">
+      </div>
+      <div style="padding:14px 16px;background:var(--gray);border:1px solid var(--gray3);margin-top:4px;">
+        <p style="font-family:'Space Mono',monospace;font-size:0.58rem;color:var(--text-muted);line-height:1.9;">
+          ⚠ 這裡的設定存在瀏覽器 localStorage，換電腦後需重填。<br>
+          永久設定請直接修改 <code style="color:var(--orange);">supabase.js</code> 檔案。
+        </p>
+      </div>
+      <div class="form-actions">
+        <button class="btn-primary" onclick="saveCfg()">儲存設定</button>
+        <span class="save-ok" id="cfgOk">✓ 已儲存！</span>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script>
+// ── CONFIG CHECK ──
+if (SUPABASE_URL === 'YOUR_SUPABASE_URL') document.getElementById('cfgBanner').classList.add('on');
+
+// ── NAVIGATION ──
+function go(viewId, el) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById('view-' + viewId).classList.add('active');
+  if (el) el.classList.add('active');
+  if (viewId === 'dashboard') loadDashboard();
+  if (viewId === 'all-posts') loadAllPosts();
+  if (viewId === 'appearance') loadAp();
+  if (viewId === 'sections') loadSections();
+  if (viewId === 'settings') loadCfg();
+  return false;
+}
+
+// ── RICH TEXT EDITOR ──
+function cmd(command, value) {
+  document.getElementById('pContent').focus();
+  document.execCommand(command, false, value || null);
+}
+function insertLink() {
+  const url = prompt('輸入連結網址：', 'https://');
+  if (url) cmd('createLink', url);
+}
+
+// ── SPOTIFY PREVIEW ──
+function spotifyEmbedUrl(url) {
+  if (!url) return '';
+  // Support track / album / playlist / episode links
+  const clean = url.split('?')[0];
+  // Convert open.spotify.com/... → open.spotify.com/embed/...
+  return clean.replace('open.spotify.com/', 'open.spotify.com/embed/') + '?utm_source=generator&theme=0';
+}
+function previewSpotify() {
+  const url = document.getElementById('pSpotify').value.trim();
+  const wrap = document.getElementById('spotifyPreviewWrap');
+  if (!url) { wrap.style.display = 'none'; return; }
+  const embed = spotifyEmbedUrl(url);
+  document.getElementById('spotifyPreviewPlayer').src = embed;
+  wrap.style.display = 'block';
+}
+
+// ── POST FORM ──
+let selImgFile = null, uploadedUrl = '';
+let editingId = null; // null = new post, number = editing existing
+
+function onCatChange() {
+  const cat = document.getElementById('pCat').value;
+  document.getElementById('musicExtras').classList.toggle('on', cat === 'music');
+}
+function pickMood(btn, v) {
+  document.querySelectorAll('.mood-chip').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('pMood').value = v;
+}
+function onImgSelect(e) {
+  const f = e.target.files[0]; if (!f) return;
+  selImgFile = f;
+  const r = new FileReader();
+  r.onload = ev => {
+    const p = document.getElementById('pImgPreview');
+    p.src = ev.target.result; p.style.display = 'block';
+    document.getElementById('pImgDeleteBtn').style.display = 'inline-flex';
+  };
+  r.readAsDataURL(f);
+}
+function removeImg(){
+  selImgFile = null; uploadedUrl = '';
+  const p = document.getElementById('pImgPreview'); p.src = ''; p.style.display = 'none';
+  document.getElementById('pImgFile').value = '';
+  document.getElementById('pImgBarWrap').style.display = 'none';
+  document.getElementById('pImgDeleteBtn').style.display = 'none';
+}
+
+// ── COVER UPLOAD (Music) ──
+let selCoverFile = null, uploadedCoverUrl = '';
+function onCoverSelect(e) {
+  const f = e.target.files[0]; if (!f) return;
+  selCoverFile = f;
+  const r = new FileReader();
+  r.onload = ev => {
+    const p = document.getElementById('pCoverPreview');
+    p.src = ev.target.result; p.style.display = 'block';
+    document.getElementById('pCoverDeleteBtn').style.display = 'inline-flex';
+    // Clear manual URL if file selected
+    document.getElementById('pCover').value = '';
+  };
+  r.readAsDataURL(f);
+}
+function onCoverUrlInput() {
+  // Clear file selection if URL typed
+  selCoverFile = null;
+  const p = document.getElementById('pCoverPreview');
+  const url = document.getElementById('pCover').value.trim();
+  if (url) { p.src = url; p.style.display = 'block'; document.getElementById('pCoverDeleteBtn').style.display = 'inline-flex'; }
+  else { p.style.display = 'none'; document.getElementById('pCoverDeleteBtn').style.display = 'none'; }
+}
+function removeCover(){
+  selCoverFile = null; uploadedCoverUrl = '';
+  const p = document.getElementById('pCoverPreview'); p.src = ''; p.style.display = 'none';
+  document.getElementById('pCoverFile').value = '';
+  document.getElementById('pCover').value = '';
+  document.getElementById('pCoverBarWrap').style.display = 'none';
+  document.getElementById('pCoverDeleteBtn').style.display = 'none';
+}
+async function submitPost() {
+  const title = document.getElementById('pTitle').value.trim();
+  const postContent = document.getElementById('pContent').innerHTML.trim();
+  const err = document.getElementById('postErr');
+  err.classList.remove('show');
+  if (!title || !postContent || postContent === '<br>') { err.textContent = '⚠ 請填寫標題和內文！'; err.classList.add('show'); return; }
+  const btn = document.getElementById('postBtn');
+  btn.disabled = true; btn.textContent = '處理中...';
+  // Upload new image if selected
+  if (selImgFile) {
+    const wrap = document.getElementById('pImgBarWrap');
+    const bar = document.getElementById('pImgBar');
+    const st = document.getElementById('pImgStatus');
+    wrap.style.display = 'block'; bar.style.width = '30%'; st.textContent = '上傳圖片中...';
+    uploadedUrl = await uploadImage(selImgFile);
+    bar.style.width = '100%'; st.textContent = uploadedUrl ? '✓ 完成' : '⚠ 失敗';
+  }
+  const spotifyRaw = document.getElementById('pSpotify').value.trim();
+
+  // Upload cover image if file selected
+  let finalCoverUrl = document.getElementById('pCover').value.trim() || null;
+  if (selCoverFile) {
+    const barWrap = document.getElementById('pCoverBarWrap');
+    const bar = document.getElementById('pCoverBar');
+    const st = document.getElementById('pCoverStatus');
+    barWrap.style.display = 'block'; bar.style.width = '30%'; st.textContent = '上傳封面中...';
+    const cu = await uploadImage(selCoverFile);
+    bar.style.width = '100%'; st.textContent = cu ? '✓ 完成' : '⚠ 失敗';
+    if (cu) { finalCoverUrl = cu; uploadedCoverUrl = cu; selCoverFile = null; }
+  }
+
+  const post = {
+    category: document.getElementById('pCat').value, title,
+    content: postContent,
+    tag: document.getElementById('pTag').value.trim() || null,
+    image_url: uploadedUrl || null,
+    video_url: document.getElementById('pVideo').value.trim() || null,
+    song_name: document.getElementById('pSong').value.trim() || null,
+    artist: document.getElementById('pArtist').value.trim() || null,
+    mood: document.getElementById('pMood').value.trim() || null,
+    cover_url: finalCoverUrl,
+    spotify_url: spotifyRaw || null,
+  };
+  let res;
+  if (editingId) {
+    // UPDATE
+    res = await updatePost(editingId, post);
+    btn.disabled = false; btn.textContent = '儲存更改';
+    if (res) {
+      document.getElementById('postOk').textContent = '✓ 更新成功！';
+      showOk('postOk');
+      loadDashboard(); loadAllPosts();
+    } else {
+      err.textContent = '⚠ 更新失敗，請確認 Supabase 設定。'; err.classList.add('show');
+    }
+  } else {
+    // CREATE
+    res = await createPost(post);
+    btn.disabled = false; btn.textContent = '發布文章';
+    if (res) {
+      document.getElementById('postOk').textContent = '✓ 發布成功！';
+      showOk('postOk');
+      clearPost();
+      loadDashboard(); loadAllPosts();
+    } else {
+      err.textContent = '⚠ 發布失敗，請確認 Supabase 設定。'; err.classList.add('show');
+    }
+  }
+}
+
+// ── EDIT POST ──
+async function editPost(id) {
+  // Fetch the specific post
+  const posts = await fetchPosts();
+  const p = posts.find(x => x.id === id);
+  if (!p) return;
+  editingId = id;
+
+  // Switch to new-post view
+  go('new-post', document.querySelector('.sidebar-nav a:nth-child(3)'));
+
+  // Update header
+  document.querySelector('#view-new-post .main-header h1').textContent = '編輯文章';
+  document.querySelector('#view-new-post .main-header p').textContent = `// Editing ID: ${id}`;
+  document.getElementById('postBtn').textContent = '儲存更改';
+
+  // Fill in all fields
+  document.getElementById('pCat').value = p.category || 'music';
+  onCatChange();
+  document.getElementById('pTitle').value = p.title || '';
+  document.getElementById('pTag').value = p.tag || '';
+  document.getElementById('pContent').innerHTML = p.content || '';
+  document.getElementById('pVideo').value = p.video_url || '';
+
+  // Music specific
+  document.getElementById('pSong').value = p.song_name || '';
+  document.getElementById('pArtist').value = p.artist || '';
+  document.getElementById('pMood').value = p.mood || '';
+  document.getElementById('pCover').value = p.cover_url || '';
+  // Show cover preview
+  if (p.cover_url) {
+    const cp = document.getElementById('pCoverPreview');
+    cp.src = p.cover_url; cp.style.display = 'block';
+    document.getElementById('pCoverDeleteBtn').style.display = 'inline-flex';
+  }
+  const spUrl = p.spotify_url || '';
+  document.getElementById('pSpotify').value = spUrl;
+  if (spUrl) {
+    document.getElementById('spotifyPreviewPlayer').src = spotifyEmbedUrl(spUrl);
+    document.getElementById('spotifyPreviewWrap').style.display = 'block';
+  }
+
+  // Mood chips
+  document.querySelectorAll('.mood-chip').forEach(b => {
+    b.classList.toggle('on', b.textContent === p.mood);
+  });
+
+  // Existing image
+  if (p.image_url) {
+    const prev = document.getElementById('pImgPreview');
+    prev.src = p.image_url; prev.style.display = 'block';
+    document.getElementById('pImgDeleteBtn').style.display = 'inline-flex';
+    uploadedUrl = p.image_url; // keep existing unless replaced
+  }
+
+  // Scroll to top
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+function clearPost() {
+  ['pTitle','pTag','pVideo','pSong','pArtist','pMood','pCover','pSpotify'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('pContent').innerHTML = '';
+  const p = document.getElementById('pImgPreview'); p.style.display = 'none'; p.src = '';
+  document.getElementById('pImgBarWrap').style.display = 'none';
+  document.getElementById('pImgDeleteBtn').style.display = 'none';
+  const cp = document.getElementById('pCoverPreview'); cp.style.display = 'none'; cp.src = '';
+  document.getElementById('pCoverBarWrap').style.display = 'none';
+  document.getElementById('pCoverDeleteBtn').style.display = 'none';
+  document.getElementById('spotifyPreviewWrap').style.display = 'none';
+  document.querySelectorAll('.mood-chip').forEach(b => b.classList.remove('on'));
+  selImgFile = null; uploadedUrl = '';
+  selCoverFile = null; uploadedCoverUrl = '';
+  editingId = null;
+  document.getElementById('postBtn').textContent = '發布文章';
+  document.querySelector('#view-new-post .main-header h1').textContent = '新增文章';
+  document.querySelector('#view-new-post .main-header p').textContent = '// Create New Post';
+  document.getElementById('postErr').classList.remove('show');
+}
+
+// ── DASHBOARD / ALL POSTS ──
+const CAT = {music:'音樂',explore:'探索世界',tech:'科技投資',marketing:'行銷思考'};
+const CBADGE = {music:'b-music',explore:'b-explore',tech:'b-tech',marketing:'b-marketing'};
+async function loadDashboard() {
+  const posts = await fetchPosts();
+  const c = {music:0,explore:0,tech:0,marketing:0};
+  posts.forEach(p => { if(c[p.category]!==undefined) c[p.category]++; });
+  document.getElementById('statsGrid').innerHTML = [['music','♪'],['explore','◎'],['tech','◈'],['marketing','◉']].map(([k,ic]) =>
+    `<div class="stat-box"><div class="stat-num">${c[k]}</div><div class="stat-lbl">${ic} ${CAT[k]}</div></div>`).join('');
+  const b = document.getElementById('dashBody');
+  if (!posts.length) { b.innerHTML = `<tr><td colspan="4" class="empty-row">還沒有文章</td></tr>`; return; }
+  b.innerHTML = posts.slice(0,10).map(p =>
+    `<tr><td style="font-weight:400;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+      <button class="act-btn" style="color:var(--white);text-align:left;font-size:0.78rem;font-family:'Noto Sans TC',sans-serif;letter-spacing:0;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onclick="editPost(${p.id})" title="點擊編輯">${p.title}</button>
+    </td>
+    <td><span class="badge ${CBADGE[p.category]}">${CAT[p.category]}</span></td>
+    <td style="font-family:'Space Mono',monospace;font-size:0.58rem;color:var(--text-muted);">${fmtDate(p.created_at)}</td>
+    <td style="white-space:nowrap;">
+      <button class="act-btn" style="color:var(--orange);" onclick="editPost(${p.id})">編輯</button>
+      <button class="act-btn" onclick="del(${p.id})">刪除</button>
+    </td></tr>`).join('');
+}
+async function loadAllPosts() {
+  const posts = await fetchPosts();
+  const b = document.getElementById('allBody');
+  if (!posts.length) { b.innerHTML = `<tr><td colspan="5" class="empty-row">還沒有文章</td></tr>`; return; }
+  b.innerHTML = posts.map(p =>
+    `<tr><td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+      <button class="act-btn" style="color:var(--white);text-align:left;font-size:0.78rem;font-family:'Noto Sans TC',sans-serif;letter-spacing:0;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onclick="editPost(${p.id})" title="點擊編輯">${p.title}</button>
+    </td>
+    <td><span class="badge ${CBADGE[p.category]}">${CAT[p.category]}</span></td>
+    <td style="font-size:0.75rem;color:var(--text-muted);">${p.tag||'—'}</td>
+    <td style="font-family:'Space Mono',monospace;font-size:0.58rem;color:var(--text-muted);white-space:nowrap;">${fmtDate(p.created_at)}</td>
+    <td style="white-space:nowrap;">
+      <button class="act-btn" style="color:var(--orange);" onclick="editPost(${p.id})">編輯</button>
+      <button class="act-btn" onclick="del(${p.id})">刪除</button>
+    </td></tr>`).join('');
+}
+async function del(id) {
+  if (!confirm('確定要刪除？')) return;
+  if (await deletePost(id)) { loadDashboard(); loadAllPosts(); }
+  else alert('刪除失敗');
+}
+
+// ── APPEARANCE ──
+const AP_DEF = {
+  name:'MIND SPACE', eye:'// 個人思想空間',
+  h1:'THINK', h2:'FEEL', h3:'GROW',
+  desc:'音樂、探索、科技、行銷——四個維度，記錄一個人的思維流動。',
+  accent:'#ff4d00', bg:'#0a0a0a', text:'#f0ede8',
+  titleFont:'Bebas Neue', bodySize:'16px', lineHeight:'1.8'
+};
+function loadAp() {
+  const s = {...AP_DEF, ...JSON.parse(localStorage.getItem('ms_ap')||'{}')};
+  Object.keys(AP_DEF).forEach(k => {
+    const el = document.getElementById('ap_'+k);
+    if (el) el.value = s[k];
+  });
+  document.getElementById('ap_accentHex').value = s.accent;
+  document.getElementById('ap_bgHex').value = s.bg;
+  document.getElementById('ap_textHex').value = s.text;
+  apPreview();
+  loadHeroImg();
+  loadMusicHeroImg();
+}
+function apPreview() {
+  const accent = document.getElementById('ap_accent').value;
+  const bg = document.getElementById('ap_bg').value;
+  const text = document.getElementById('ap_text').value;
+  const font = document.getElementById('ap_titleFont').value;
+
+  const stage = document.getElementById('apPreview');
+  stage.style.background = bg;
+
+  const eye = document.getElementById('apPrevEye');
+  eye.style.color = accent;
+  eye.textContent = document.getElementById('ap_eye').value || '// 個人思想空間';
+
+  const title = document.getElementById('apPrevTitle');
+  title.style.fontFamily = `'${font}', sans-serif`;
+  title.style.color = text;
+  const l1 = document.getElementById('ap_h1').value || 'THINK';
+  const l2 = document.getElementById('ap_h2').value || 'FEEL';
+  const l3 = document.getElementById('ap_h3').value || 'GROW';
+  title.innerHTML = `${l1} ${l2} <span style="color:${accent}">${l3}</span>`;
+
+  const desc = document.getElementById('apPrevDesc');
+  desc.style.color = text + '99';
+  desc.textContent = document.getElementById('ap_desc').value || '';
+
+  // font preview
+  const fp = document.getElementById('apFontPreview');
+  if (fp) { fp.style.fontFamily = `'${font}', sans-serif`; }
+
+  // color combo
+  document.getElementById('colorCombo').style.background = bg;
+  document.getElementById('cc_accent').style.color = accent;
+  document.getElementById('cc_btn').style.background = accent;
+  document.getElementById('cc_btn').style.color = bg;
+  document.getElementById('cc_text').style.color = text;
+}
+function setAc(v) { document.getElementById('ap_accent').value = v; document.getElementById('ap_accentHex').value = v; apPreview(); }
+function setBg(v) { document.getElementById('ap_bg').value = v; document.getElementById('ap_bgHex').value = v; apPreview(); }
+function setTxt(v) { document.getElementById('ap_text').value = v; document.getElementById('ap_textHex').value = v; apPreview(); }
+function onAc() { document.getElementById('ap_accentHex').value = document.getElementById('ap_accent').value; apPreview(); }
+function onBg() { document.getElementById('ap_bgHex').value = document.getElementById('ap_bg').value; apPreview(); }
+function onAcHex() { const v=document.getElementById('ap_accentHex').value; if(/^#[0-9a-fA-F]{6}$/.test(v)) document.getElementById('ap_accent').value=v; apPreview(); }
+function onBgHex() { const v=document.getElementById('ap_bgHex').value; if(/^#[0-9a-fA-F]{6}$/.test(v)) document.getElementById('ap_bg').value=v; apPreview(); }
+function onTextHex() { const v=document.getElementById('ap_textHex').value; if(/^#[0-9a-fA-F]{6}$/.test(v)) document.getElementById('ap_text').value=v; apPreview(); }
+function saveAp() {
+  const keys = ['name','eye','h1','h2','h3','desc','titleFont','bodySize','lineHeight'];
+  const s = {};
+  keys.forEach(k => { s[k] = document.getElementById('ap_'+k)?.value || AP_DEF[k]; });
+  s.accent = document.getElementById('ap_accent').value;
+  s.bg = document.getElementById('ap_bg').value;
+  s.text = document.getElementById('ap_text').value;
+  localStorage.setItem('ms_ap', JSON.stringify(s));
+  document.documentElement.style.setProperty('--orange', s.accent);
+  showOk('apOk');
+}
+function resetAp() {
+  if (!confirm('確定要恢復所有外觀預設值？')) return;
+  localStorage.removeItem('ms_ap');
+  loadAp();
+}
+
+// ── HERO IMAGE ──
+let heroImgFile = null;
+let heroImgUrl = JSON.parse(localStorage.getItem('ms_hero_img')||'{}').url || '';
+let heroPosX = JSON.parse(localStorage.getItem('ms_hero_img')||'{}').x || 50;
+let heroPosY = JSON.parse(localStorage.getItem('ms_hero_img')||'{}').y || 50;
+
+function onHeroImg(e){
+  const f = e.target.files[0]; if (!f) return;
+  heroImgFile = f;
+  const r = new FileReader();
+  r.onload = ev => {
+    const preview = document.getElementById('heroImgPreview');
+    preview.src = ev.target.result; preview.style.display = 'block';
+    // Show pos picker
+    document.getElementById('heroPosImg').src = ev.target.result;
+    document.getElementById('heroPosWrap').style.display = 'block';
+    document.getElementById('heroPosEmpty').style.display = 'none';
+    updatePosMarker(heroPosX, heroPosY);
+  };
+  r.readAsDataURL(f);
+}
+
+function setHeroPos(e){
+  const box = document.getElementById('heroPosBox');
+  const rect = box.getBoundingClientRect();
+  heroPosX = Math.round(((e.clientX-rect.left)/rect.width)*100);
+  heroPosY = Math.round(((e.clientY-rect.top)/rect.height)*100);
+  updatePosMarker(heroPosX, heroPosY);
+}
+function updatePosMarker(x, y){
+  const marker = document.getElementById('heroPosMarker');
+  marker.style.left = x+'%'; marker.style.top = y+'%'; marker.style.display = 'block';
+  document.getElementById('posXVal').textContent = x;
+  document.getElementById('posYVal').textContent = y;
+  // Live preview the bg position
+  const img = document.getElementById('heroPosImg');
+  img.style.objectPosition = `${x}% ${y}%`;
+}
+
+async function saveHeroImg(){
+  const btn = document.querySelector('#view-appearance .btn-primary');
+  // If new file selected, upload first
+  if (heroImgFile) {
+    const bar = document.getElementById('heroBar');
+    const st = document.getElementById('heroBarSt');
+    document.getElementById('heroBarWrap').style.display = 'block';
+    bar.style.width = '30%'; st.textContent = '上傳中...';
+    const url = await uploadImage(heroImgFile);
+    if (url){ heroImgUrl = url; bar.style.width='100%'; st.textContent='✓ 完成'; heroImgFile = null; }
+    else { st.textContent = '⚠ 上傳失敗'; return; }
+  }
+  if (!heroImgUrl) { showOk('heroImgOk'); return; }
+  localStorage.setItem('ms_hero_img', JSON.stringify({url:heroImgUrl, x:heroPosX, y:heroPosY}));
+  showOk('heroImgOk');
+}
+
+function clearHeroImg(){
+  heroImgUrl = ''; heroImgFile = null;
+  localStorage.removeItem('ms_hero_img');
+  const p = document.getElementById('heroImgPreview'); p.src=''; p.style.display='none';
+  document.getElementById('heroPosWrap').style.display='none';
+  document.getElementById('heroPosEmpty').style.display='block';
+  showOk('heroImgOk');
+}
+
+function loadHeroImg(){
+  const hi = JSON.parse(localStorage.getItem('ms_hero_img')||'{}');
+  if (hi.url){
+    heroImgUrl = hi.url; heroPosX = hi.x||50; heroPosY = hi.y||50;
+    const p = document.getElementById('heroImgPreview'); p.src=hi.url; p.style.display='block';
+    document.getElementById('heroPosImg').src = hi.url;
+    document.getElementById('heroPosWrap').style.display='block';
+    document.getElementById('heroPosEmpty').style.display='none';
+    updatePosMarker(heroPosX, heroPosY);
+  }
+}
+
+// ── MUSIC PAGE HERO BACKGROUND ──
+let musicHeroFile = null, musicHeroUrl = '';
+function onMusicHeroImg(e) {
+  const f = e.target.files[0]; if (!f) return;
+  musicHeroFile = f;
+  const r = new FileReader();
+  r.onload = ev => {
+    const p = document.getElementById('musicHeroPreview');
+    p.src = ev.target.result; p.style.display = 'block';
+    document.getElementById('musicHeroPosWrap').style.display = 'block';
+    document.getElementById('musicHeroPosEmpty').style.display = 'none';
+  };
+  r.readAsDataURL(f);
+}
+async function saveMusicHeroImg() {
+  const btn = document.querySelector('#view-appearance .btn-primary[onclick="saveMusicHeroImg()"]');
+  if (musicHeroFile) {
+    const bar = document.getElementById('musicHeroBar');
+    const st = document.getElementById('musicHeroBarSt');
+    document.getElementById('musicHeroBarWrap').style.display = 'block';
+    bar.style.width = '40%'; st.textContent = '上傳中...';
+    const url = await uploadImage(musicHeroFile);
+    if (url) { musicHeroUrl = url; bar.style.width = '100%'; st.textContent = '✓ 完成'; musicHeroFile = null; }
+    else { st.textContent = '⚠ 上傳失敗'; return; }
+  }
+  if (!musicHeroUrl) { showOk('musicHeroOk'); return; }
+  const x = parseInt(document.getElementById('musicHeroPosX')?.value || 50);
+  const y = parseInt(document.getElementById('musicHeroPosY')?.value || 50);
+  localStorage.setItem('ms_music_hero', JSON.stringify({url: musicHeroUrl, x, y}));
+  showOk('musicHeroOk');
+}
+function clearMusicHeroImg() {
+  musicHeroUrl = ''; musicHeroFile = null;
+  localStorage.removeItem('ms_music_hero');
+  const p = document.getElementById('musicHeroPreview'); p.src = ''; p.style.display = 'none';
+  document.getElementById('musicHeroPosWrap').style.display = 'none';
+  document.getElementById('musicHeroPosEmpty').style.display = 'block';
+  document.getElementById('musicHeroBarWrap').style.display = 'none';
+  showOk('musicHeroOk');
+}
+function loadMusicHeroImg() {
+  const mh = JSON.parse(localStorage.getItem('ms_music_hero') || '{}');
+  if (mh.url) {
+    musicHeroUrl = mh.url;
+    const p = document.getElementById('musicHeroPreview'); p.src = mh.url; p.style.display = 'block';
+    document.getElementById('musicHeroPosWrap').style.display = 'block';
+    document.getElementById('musicHeroPosEmpty').style.display = 'none';
+    if (document.getElementById('musicHeroPosX')) document.getElementById('musicHeroPosX').value = mh.x || 50;
+    if (document.getElementById('musicHeroPosY')) document.getElementById('musicHeroPosY').value = mh.y || 50;
+    if (document.getElementById('musicHeroPosXVal')) document.getElementById('musicHeroPosXVal').textContent = mh.x || 50;
+    if (document.getElementById('musicHeroPosYVal')) document.getElementById('musicHeroPosYVal').textContent = mh.y || 50;
+  }
+}
+
+// ── SECTIONS (文字設定 + 位置調整，背景圖由最新文章自動帶入) ──
+const SEC_DEF = [
+  {id:'music', icon:'♪', num:'01', label:'MUSIC', title:'我在\n聽音樂', desc:'每一首歌都是一個時刻的切片。串接 Spotify，記錄我聽每首歌時的心情與感受。', tag:'Spotify Embed', img:'', posX:50, posY:50},
+  {id:'explore', icon:'◎', num:'02', label:'EXPLORE', title:'我在\n探索世界', desc:'旅行的足跡、城市的溫度、異文化的衝擊。用圖像與文字，記錄每一次與世界的相遇。', tag:'World Journal', img:'', posX:50, posY:50},
+  {id:'tech', icon:'◈', num:'03', label:'TECH & INVESTMENT', title:'科技投資\n思考', desc:'科技趨勢的觀察、投資邏輯的梳理、產業變革的思考。', tag:'Think Tank', img:'', posX:50, posY:50},
+  {id:'marketing', icon:'◉', num:'04', label:'MARKETING', title:'行銷專案\n思考', desc:'品牌策略、消費者洞察、創意執行。拆解優秀案例背後的邏輯。', tag:'Case Study', img:'', posX:50, posY:50},
+];
+
+function loadSections() {
+  const saved = JSON.parse(localStorage.getItem('ms_sections') || '[]');
+  const secs = SEC_DEF.map((def, i) => ({...def, ...(saved[i]||{})}));
+  document.getElementById('sectionCards').innerHTML = secs.map((s, i) => `
+    <div class="section-card">
+      <div class="section-card-label">${s.icon} 區塊 ${s.num} — ${s.label}</div>
+      <div class="form-group">
+        <label class="form-label">標題</label>
+        <input class="form-input" id="sec_title_${i}" value="${s.title.replace('\n',' ')}" placeholder="${s.title}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">描述文字</label>
+        <input class="form-input" id="sec_desc_${i}" value="${s.desc}" placeholder="${s.desc}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">標籤文字（右上角）</label>
+        <input class="form-input" id="sec_tag_${i}" value="${s.tag}" placeholder="${s.tag}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">背景圖片焦點位置（自動使用最新文章首圖）</label>
+        <p style="font-family:'Space Mono',monospace;font-size:0.52rem;color:var(--text-muted);line-height:1.6;margin-bottom:10px;">拖拉滑桿，調整最新文章圖片的顯示焦點（避免人臉或主體被裁切）</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label class="form-label" style="font-size:0.5rem;">水平焦點 X: <span id="secPosXVal_${i}">${s.posX||50}</span>%</label>
+            <input type="range" min="0" max="100" value="${s.posX||50}" id="sec_posX_${i}"
+              oninput="document.getElementById('secPosXVal_${i}').textContent=this.value"
+              style="width:100%;accent-color:var(--orange);cursor:pointer;">
+          </div>
+          <div>
+            <label class="form-label" style="font-size:0.5rem;">垂直焦點 Y: <span id="secPosYVal_${i}">${s.posY||50}</span>%</label>
+            <input type="range" min="0" max="100" value="${s.posY||50}" id="sec_posY_${i}"
+              oninput="document.getElementById('secPosYVal_${i}').textContent=this.value"
+              style="width:100%;accent-color:var(--orange);cursor:pointer;">
+          </div>
+        </div>
+        <p style="font-family:'Space Mono',monospace;font-size:0.5rem;color:var(--text-muted);margin-top:8px;">💡 X=0% 靠左 / X=100% 靠右 | Y=0% 頂部 / Y=100% 底部</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function saveSections() {
+  const btn = document.querySelector('#view-sections .btn-primary');
+  btn.disabled = true; btn.textContent = '儲存中...';
+  const saved = JSON.parse(localStorage.getItem('ms_sections') || '[]');
+  const secs = SEC_DEF.map((def, i) => ({...def, ...(saved[i]||{})}));
+  for (let i = 0; i < 4; i++) {
+    secs[i].title = document.getElementById(`sec_title_${i}`)?.value || secs[i].title;
+    secs[i].desc = document.getElementById(`sec_desc_${i}`)?.value || secs[i].desc;
+    secs[i].tag = document.getElementById(`sec_tag_${i}`)?.value || secs[i].tag;
+    secs[i].posX = parseInt(document.getElementById(`sec_posX_${i}`)?.value || 50);
+    secs[i].posY = parseInt(document.getElementById(`sec_posY_${i}`)?.value || 50);
+  }
+  localStorage.setItem('ms_sections', JSON.stringify(secs));
+  btn.disabled = false; btn.textContent = '儲存區塊設定';
+  showOk('secOk');
+}
+
+// ── SETTINGS ──
+function loadCfg() {
+  document.getElementById('cfgUrl').value = SUPABASE_URL !== 'YOUR_SUPABASE_URL' ? SUPABASE_URL : '';
+  document.getElementById('cfgKey').value = SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY' ? SUPABASE_ANON_KEY : '';
+  document.getElementById('cfgSpotify').value = localStorage.getItem('ms_spotify') || '';
+}
+function saveCfg() {
+  localStorage.setItem('ms_spotify', document.getElementById('cfgSpotify').value);
+  showOk('cfgOk');
+}
+
+// ── UTILS ──
+function fmtDate(d) { const dt=new Date(d); return `${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}`; }
+function showOk(id) { const el=document.getElementById(id); el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),3500); }
+
+// ── INIT ──
+loadDashboard();
+</script>
+</body>
+</html>

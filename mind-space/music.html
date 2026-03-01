@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我在聽音樂 — MIND SPACE</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@300;400;700&family=Space+Mono:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<style>
+:root{
+  --black:#080808;
+  --white:#f0ede8;
+  --orange:#ff4d00;
+  --gray:#151515;
+  --gray2:#222;
+  --gray3:#2e2e2e;
+  --muted:#555;
+  --green:#1db954;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--white);font-family:'Noto Sans TC',sans-serif;font-weight:300;overflow-x:hidden;}
+
+/* ─ NOISE ─ */
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");opacity:0.022;pointer-events:none;z-index:9999;}
+
+/* ─ NAV ─ */
+nav{position:fixed;top:0;left:0;right:0;z-index:500;display:flex;justify-content:space-between;align-items:center;padding:24px 48px;background:linear-gradient(to bottom,rgba(8,8,8,0.8) 0%,transparent 100%);}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:0.18em;color:var(--white);text-decoration:none;}
+.nav-right{display:flex;align-items:center;gap:32px;}
+.nav-back{font-family:'Space Mono',monospace;font-size:0.58rem;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.35);text-decoration:none;transition:color 0.2s;}
+.nav-back:hover{color:var(--orange);}
+
+/* ══════════════════════════════════════
+   HERO
+══════════════════════════════════════ */
+.hero{position:relative;height:100vh;min-height:600px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;}
+.hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;transition:opacity 0.6s,transform 14s ease;transform:scale(1.08);}
+.hero-bg.loaded{transform:scale(1.0);}
+.hero-grad{position:absolute;inset:0;background:linear-gradient(to top, rgba(8,8,8,1) 0%, rgba(8,8,8,0.7) 28%, rgba(8,8,8,0.15) 55%, transparent 100%),linear-gradient(105deg, rgba(8,8,8,0.6) 0%, transparent 55%);}
+.hero-color-glow{position:absolute;inset:0;background:radial-gradient(ellipse at 15% 90%, rgba(255,77,0,0.12) 0%, transparent 50%);pointer-events:none;}
+.hero-strip{position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--orange),transparent);opacity:0.6;}
+.hero-index{position:absolute;right:48px;top:50%;transform:translateY(-50%);writing-mode:vertical-rl;font-family:'Space Mono',monospace;font-size:0.52rem;letter-spacing:0.35em;text-transform:uppercase;color:rgba(255,255,255,0.15);user-select:none;}
+.hero-index span{color:var(--orange);}
+
+.hero-content{position:relative;z-index:10;padding:0 48px 52px;display:grid;grid-template-columns:1fr 400px;gap:48px;align-items:end;}
+
+/* Left */
+.hero-playing-badge{display:inline-flex;align-items:center;gap:9px;margin-bottom:20px;}
+.playing-bars{display:flex;align-items:flex-end;gap:3px;height:14px;}
+.playing-bars span{display:block;width:3px;background:var(--orange);border-radius:1px;animation:bar 0.8s ease infinite alternate;}
+.playing-bars span:nth-child(1){height:6px;animation-delay:0s;}
+.playing-bars span:nth-child(2){height:10px;animation-delay:0.15s;}
+.playing-bars span:nth-child(3){height:14px;animation-delay:0.3s;}
+.playing-bars span:nth-child(4){height:8px;animation-delay:0.1s;}
+@keyframes bar{from{transform:scaleY(0.4)}to{transform:scaleY(1)}}
+.playing-label{font-family:'Space Mono',monospace;font-size:0.52rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--orange);}
+.hero-song-name{font-family:'Bebas Neue',sans-serif;font-size:clamp(52px,8vw,110px);line-height:0.86;letter-spacing:-0.01em;margin-bottom:10px;text-shadow:0 4px 40px rgba(0,0,0,0.5);}
+.hero-artist-row{display:flex;align-items:center;gap:14px;margin-bottom:22px;}
+.artist-divider{width:28px;height:1px;background:var(--orange);}
+.hero-artist{font-family:'Space Mono',monospace;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.45);}
+.hero-mood{display:inline-block;border:1px solid rgba(255,77,0,0.35);background:rgba(255,77,0,0.08);color:rgba(255,255,255,0.6);font-family:'Space Mono',monospace;font-size:0.55rem;letter-spacing:0.1em;padding:5px 13px;}
+.hero-controls{display:flex;align-items:center;gap:10px;margin-top:24px;}
+.ctrl{font-family:'Space Mono',monospace;font-size:0.55rem;letter-spacing:0.14em;text-transform:uppercase;padding:10px 20px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.55);cursor:pointer;transition:all 0.2s;}
+.ctrl:hover{border-color:rgba(255,255,255,0.3);color:var(--white);}
+.ctrl.accent{background:var(--orange);border-color:var(--orange);color:var(--black);font-weight:700;}
+.ctrl.accent:hover{background:#ff6620;}
+.hero-counter{font-family:'Space Mono',monospace;font-size:0.5rem;color:rgba(255,255,255,0.2);margin-left:auto;}
+.hero-counter b{color:rgba(255,255,255,0.55);}
+
+/* Right note card */
+.hero-note{background:rgba(12,12,12,0.72);border:1px solid rgba(255,255,255,0.07);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);padding:28px 30px;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:220px;}
+.hero-note::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,77,0,0.5),transparent);}
+.hn-tag{font-family:'Space Mono',monospace;font-size:0.5rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--orange);margin-bottom:10px;}
+.hn-post-title{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:0.04em;line-height:1.1;margin-bottom:6px;}
+.hn-date{font-family:'Space Mono',monospace;font-size:0.46rem;color:rgba(255,255,255,0.25);margin-bottom:12px;}
+.hn-preview-text{font-size:0.8rem;line-height:1.85;color:rgba(255,255,255,0.55);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;flex:1;}
+.hn-empty{font-family:'Space Mono',monospace;font-size:0.62rem;color:rgba(255,255,255,0.18);letter-spacing:0.1em;}
+.hn-actions{display:flex;align-items:center;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.06);}
+.hn-play-btn{display:inline-flex;align-items:center;gap:7px;background:var(--green);border:none;color:#000;font-family:'Space Mono',monospace;font-size:0.55rem;letter-spacing:0.12em;text-transform:uppercase;padding:9px 16px;cursor:pointer;transition:background 0.2s;font-weight:700;flex-shrink:0;}
+.hn-play-btn:hover{background:#22d460;}
+.hn-expand-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:1;background:none;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.5);font-family:'Space Mono',monospace;font-size:0.5rem;letter-spacing:0.12em;text-transform:uppercase;padding:9px 14px;cursor:pointer;transition:all 0.2s;}
+.hn-expand-btn:hover{border-color:var(--orange);color:var(--orange);}
+
+/* Loading */
+.hero-loading{position:absolute;inset:0;background:var(--black);display:flex;align-items:center;justify-content:center;z-index:50;transition:opacity 0.6s;}
+.hero-loading.out{opacity:0;pointer-events:none;}
+.hl-inner{text-align:center;}
+.hl-icon{font-size:48px;opacity:0.15;display:block;margin-bottom:16px;animation:spin 3s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hl-text{font-family:'Space Mono',monospace;font-size:0.6rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--muted);}
+
+/* ══════════════════════════════════════
+   SPOTIFY PLAYER STRIP
+   (between hero and scroll notes)
+══════════════════════════════════════ */
+.sp-strip{
+  padding:0 48px;
+  position:relative;z-index:20;
+}
+.sp-strip-inner{
+  background:rgba(10,10,10,0.92);
+  border:1px solid rgba(255,255,255,0.07);
+  border-top:2px solid rgba(29,185,84,0.4);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+}
+.sp-strip-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 18px 4px;
+}
+.sp-strip-label{display:flex;align-items:center;gap:8px;}
+.sp-dot{width:7px;height:7px;background:var(--green);border-radius:50%;box-shadow:0 0 7px rgba(29,185,84,0.7);flex-shrink:0;animation:spblink 2s ease infinite;}
+@keyframes spblink{0%,100%{opacity:1;box-shadow:0 0 7px rgba(29,185,84,0.7)}50%{opacity:0.6;box-shadow:0 0 3px rgba(29,185,84,0.3)}}
+.sp-lbl{font-family:'Space Mono',monospace;font-size:0.52rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);}
+.sp-strip-song{font-family:'Space Mono',monospace;font-size:0.5rem;color:rgba(255,255,255,0.3);letter-spacing:0.08em;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sp-strip-body{padding:4px 10px 10px;}
+.sp-strip-body iframe{width:100%;border:none;display:block;border-radius:3px;}
+
+/* ══════════════════════════════════════
+   HORIZONTAL SCROLL SECTION
+══════════════════════════════════════ */
+.scroll-section{padding:48px 0 0;border-top:1px solid rgba(255,255,255,0.04);}
+.scroll-header{padding:0 48px 28px;display:flex;align-items:baseline;justify-content:space-between;}
+.scroll-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(22px,3vw,36px);letter-spacing:0.08em;}
+.scroll-title span{color:var(--orange);}
+.scroll-hint-txt{font-family:'Space Mono',monospace;font-size:0.52rem;color:var(--muted);display:flex;align-items:center;gap:8px;}
+.scroll-hint-txt::before{content:'← →';letter-spacing:0.2em;}
+.scroll-count{font-family:'Space Mono',monospace;font-size:0.52rem;color:var(--muted);}
+.scroll-track-wrap{position:relative;}
+.scroll-track{display:flex;gap:14px;overflow-x:auto;padding:4px 48px 40px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:var(--gray3) transparent;}
+.scroll-track::-webkit-scrollbar{height:3px;}
+.scroll-track::-webkit-scrollbar-thumb{background:var(--gray3);border-radius:2px;}
+.scroll-track-wrap::before,.scroll-track-wrap::after{content:'';position:absolute;top:0;bottom:0;width:80px;z-index:10;pointer-events:none;}
+.scroll-track-wrap::before{left:0;background:linear-gradient(to right,var(--black),transparent);}
+.scroll-track-wrap::after{right:0;background:linear-gradient(to left,var(--black),transparent);}
+.track-card{flex-shrink:0;width:200px;scroll-snap-align:start;background:var(--gray);border:1px solid rgba(255,255,255,0.05);cursor:pointer;transition:all 0.25s;position:relative;overflow:hidden;}
+.track-card:hover{border-color:rgba(255,255,255,0.14);transform:translateY(-3px);}
+.track-card.is-active{border-color:var(--orange);background:rgba(255,77,0,0.06);}
+.track-card.is-active::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--orange);}
+.tc-cover{width:100%;aspect-ratio:1;object-fit:cover;display:block;filter:brightness(0.9);transition:filter 0.3s;}
+.track-card:hover .tc-cover,.track-card.is-active .tc-cover{filter:brightness(1.05);}
+.tc-cover-placeholder{width:100%;aspect-ratio:1;background:var(--gray2);display:flex;align-items:center;justify-content:center;font-size:36px;color:rgba(255,255,255,0.08);}
+.tc-active-overlay{position:absolute;top:0;left:0;width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:rgba(255,77,0,0.3);opacity:0;transition:opacity 0.2s;}
+.track-card.is-active .tc-active-overlay{opacity:1;}
+.tc-active-bars{display:flex;align-items:flex-end;gap:3px;height:20px;}
+.tc-active-bars span{display:block;width:4px;background:var(--white);border-radius:1px;animation:bar 0.7s ease infinite alternate;}
+.tc-active-bars span:nth-child(1){height:8px;animation-delay:0s;}
+.tc-active-bars span:nth-child(2){height:14px;animation-delay:0.2s;}
+.tc-active-bars span:nth-child(3){height:20px;animation-delay:0.1s;}
+.tc-active-bars span:nth-child(4){height:10px;animation-delay:0.3s;}
+.tc-info{padding:14px 14px 16px;}
+.tc-song{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:0.04em;line-height:1.1;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tc-artist{font-family:'Space Mono',monospace;font-size:0.5rem;color:var(--muted);letter-spacing:0.1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px;}
+.tc-mood{display:inline-block;background:rgba(255,77,0,0.12);color:var(--orange);font-family:'Space Mono',monospace;font-size:0.45rem;letter-spacing:0.08em;padding:2px 7px;margin-bottom:6px;}
+.tc-date{font-family:'Space Mono',monospace;font-size:0.45rem;color:rgba(255,255,255,0.2);}
+.track-empty{padding:60px 48px;font-family:'Space Mono',monospace;font-size:0.65rem;color:var(--muted);letter-spacing:0.1em;}
+.track-empty a{color:var(--orange);}
+
+/* ══════════════════════════════════════
+   GLASS MODAL — 展開全文
+══════════════════════════════════════ */
+.glass-overlay{
+  position:fixed;inset:0;z-index:900;
+  background:rgba(4,4,4,0.5);
+  backdrop-filter:blur(22px) saturate(0.8);
+  -webkit-backdrop-filter:blur(22px) saturate(0.8);
+  opacity:0;pointer-events:none;
+  transition:opacity 0.3s cubic-bezier(0.4,0,0.2,1);
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+}
+.glass-overlay.open{opacity:1;pointer-events:all;}
+.glass-modal{
+  background:rgba(12,12,12,0.75);
+  border:1px solid rgba(255,255,255,0.1);
+  backdrop-filter:blur(40px) saturate(1.2);
+  -webkit-backdrop-filter:blur(40px) saturate(1.2);
+  box-shadow:0 40px 100px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.03) inset;
+  width:100%;max-width:700px;max-height:90vh;
+  overflow-y:auto;
+  position:relative;
+  transform:translateY(20px) scale(0.97);
+  opacity:0;
+  transition:transform 0.35s cubic-bezier(0.34,1.4,0.64,1), opacity 0.3s;
+  scrollbar-width:thin;scrollbar-color:var(--gray3) transparent;
+}
+.glass-overlay.open .glass-modal{transform:translateY(0) scale(1);opacity:1;}
+.glass-modal::-webkit-scrollbar{width:3px;}
+.glass-modal::-webkit-scrollbar-thumb{background:var(--gray3);}
+/* top shimmer line */
+.glass-modal::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 0%,rgba(255,77,0,0.7) 40%,rgba(255,255,255,0.15) 60%,transparent 100%);}
+
+.gm-close{position:absolute;top:16px;right:16px;z-index:10;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.45);font-family:'Space Mono',monospace;font-size:0.52rem;letter-spacing:0.15em;padding:6px 14px;cursor:pointer;transition:all 0.2s;text-transform:uppercase;backdrop-filter:blur(8px);}
+.gm-close:hover{border-color:var(--orange);color:var(--orange);}
+
+.gm-header{padding:28px 28px 0;display:flex;gap:20px;align-items:flex-start;}
+.gm-cover{width:100px;height:100px;object-fit:cover;flex-shrink:0;border:1px solid rgba(255,255,255,0.08);}
+.gm-cover-ph{width:100px;height:100px;background:var(--gray2);display:flex;align-items:center;justify-content:center;font-size:32px;color:rgba(255,255,255,0.1);flex-shrink:0;}
+.gm-meta{flex:1;min-width:0;padding-right:60px;}
+.gm-song{font-family:'Bebas Neue',sans-serif;font-size:2.1rem;letter-spacing:0.04em;line-height:1;margin-bottom:4px;word-break:break-word;}
+.gm-artist{font-family:'Space Mono',monospace;font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.gm-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{font-family:'Space Mono',monospace;font-size:0.48rem;letter-spacing:0.1em;padding:3px 10px;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);}
+.chip.orange{border-color:rgba(255,77,0,0.4);color:var(--orange);background:rgba(255,77,0,0.06);}
+.chip.green{border-color:rgba(29,185,84,0.4);color:var(--green);background:rgba(29,185,84,0.05);}
+
+.gm-spotify{margin:20px 28px 0;background:#000;border:1px solid rgba(29,185,84,0.15);}
+.gm-spotify iframe{width:100%;border:none;display:block;}
+
+.gm-divider{margin:20px 28px 0;height:1px;background:rgba(255,255,255,0.05);}
+
+.gm-body{padding:20px 28px 40px;}
+.gm-post-title{font-family:'Bebas Neue',sans-serif;font-size:1.7rem;letter-spacing:0.04em;margin-bottom:6px;}
+.gm-post-date{font-family:'Space Mono',monospace;font-size:0.46rem;color:rgba(255,255,255,0.22);margin-bottom:18px;letter-spacing:0.12em;}
+.gm-post-content{font-size:0.9rem;line-height:2.0;color:rgba(255,255,255,0.72);}
+.gm-post-content img{max-width:100%;margin-top:16px;display:block;border:1px solid rgba(255,255,255,0.07);}
+.gm-video{position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin-top:20px;}
+.gm-video iframe{position:absolute;inset:0;width:100%;height:100%;border:none;}
+
+@media(max-width:768px){
+  nav{padding:16px 20px;}
+  .hero-content{grid-template-columns:1fr;gap:20px;padding:0 24px 36px;}
+  .hero-note{display:none;}
+  .hero-index{display:none;}
+  .sp-strip{padding:0 20px;}
+  .scroll-header{padding-left:20px;padding-right:20px;}
+  .scroll-track{padding-left:20px;padding-right:20px;}
+  .gm-header{flex-direction:column;gap:14px;}
+  .gm-meta{padding-right:60px;}
+  .gm-cover,.gm-cover-ph{width:72px;height:72px;}
+  .gm-spotify,.gm-divider,.gm-body{padding-left:20px;padding-right:20px;}
+  .glass-overlay{padding:12px;}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo">MIND SPACE</a>
+  <div class="nav-right">
+    <a href="index.html" class="nav-back">← Back</a>
+  </div>
+</nav>
+
+<!-- ══ HERO ══ -->
+<section class="hero" id="hero">
+  <div class="hero-strip"></div>
+  <div class="hero-loading" id="heroLoading">
+    <div class="hl-inner">
+      <span class="hl-icon">♪</span>
+      <p class="hl-text">// 載入中</p>
+    </div>
+  </div>
+  <div class="hero-bg" id="heroBg"></div>
+  <div class="hero-grad"></div>
+  <div class="hero-color-glow"></div>
+  <div class="hero-index" id="heroIdx">01 <span>/</span> 01</div>
+
+  <div class="hero-content" id="heroContent" style="opacity:0;transition:opacity 0.7s 0.1s;">
+    <!-- Left -->
+    <div class="hero-song">
+      <div class="hero-playing-badge">
+        <div class="playing-bars"><span></span><span></span><span></span><span></span></div>
+        <span class="playing-label">Now Playing</span>
+      </div>
+      <h1 class="hero-song-name" id="hSong">—</h1>
+      <div class="hero-artist-row">
+        <div class="artist-divider"></div>
+        <span class="hero-artist" id="hArtist"></span>
+      </div>
+      <span class="hero-mood" id="hMood" style="display:none;"></span>
+      <div class="hero-controls">
+        <button class="ctrl" onclick="navHero(-1)">← Prev</button>
+        <button class="ctrl accent" onclick="shuffleHero()">⟳ Random</button>
+        <button class="ctrl" onclick="navHero(1)">Next →</button>
+        <span class="hero-counter" id="heroCounter"><b>1</b> / 1</span>
+      </div>
+    </div>
+    <!-- Right -->
+    <div class="hero-note">
+      <div class="hn-tag">My Note</div>
+      <div id="hnBody"><div class="hn-empty">// 目前沒有感想</div></div>
+      <div class="hn-actions" id="hnActions" style="display:none;">
+        <button class="hn-play-btn" id="hnPlayBtn" style="display:none;" onclick="openModal()">
+          <svg width="9" height="11" viewBox="0 0 9 11" fill="currentColor" style="flex-shrink:0"><path d="M0 0L9 5.5L0 11V0Z"/></svg>
+          播放
+        </button>
+        <button class="hn-expand-btn" onclick="openModal()">展開全文 →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SPOTIFY STRIP (between hero and scroll) ══ -->
+<div class="sp-strip" id="spStrip" style="display:none;">
+  <div class="sp-strip-inner">
+    <div class="sp-strip-header">
+      <div class="sp-strip-label">
+        <div class="sp-dot"></div>
+        <span class="sp-lbl">Spotify</span>
+      </div>
+      <span class="sp-strip-song" id="spStripSong"></span>
+    </div>
+    <div class="sp-strip-body">
+      <iframe id="spStripPlayer" src="" height="80"
+        allow="autoplay;clipboard-write;encrypted-media;fullscreen;picture-in-picture"
+        loading="lazy"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HORIZONTAL SCROLL ══ -->
+<section class="scroll-section">
+  <div class="scroll-header">
+    <h2 class="scroll-title">所有<span>筆記</span></h2>
+    <div style="display:flex;align-items:center;gap:20px;">
+      <span class="scroll-hint-txt">滑動瀏覽</span>
+      <span class="scroll-count" id="scrollCount">— 篇</span>
+    </div>
+  </div>
+  <div class="scroll-track-wrap">
+    <div class="scroll-track" id="scrollTrack">
+      <div class="track-empty">載入中...</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ GLASS MODAL ══ -->
+<div class="glass-overlay" id="glassOverlay" onclick="handleOverlayClick(event)">
+  <div class="glass-modal" id="glassModal">
+    <button class="gm-close" onclick="closeModal()">✕ 關閉</button>
+    <div id="glassContent"></div>
+  </div>
+</div>
+
+<script>
+let posts = [];
+let heroIdx = 0;
+
+function fmtDate(d){ const dt=new Date(d); return `${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}`; }
+function getYTEmbed(url){ const m=url.match(/(?:youtu\.be\/|youtube\.com\/watch\?v=)([^&\s]+)/); return m?`https://www.youtube.com/embed/${m[1]}`:url; }
+function spEmbedUrl(url){
+  if(!url) return '';
+  return url.split('?')[0].replace('open.spotify.com/','open.spotify.com/embed/')+'?utm_source=generator&theme=0';
+}
+
+// ── HERO RENDER ──
+function renderHero(idx, animate){
+  if (!posts.length) return;
+  heroIdx = ((idx % posts.length) + posts.length) % posts.length;
+  const p = posts[heroIdx];
+
+  // BG
+  const bg = document.getElementById('heroBg');
+  const src = p.cover_url || p.image_url;
+  if (src){
+    const img = new Image();
+    img.onload = () => {
+      if (animate){
+        bg.style.opacity = '0';
+        setTimeout(()=>{ bg.style.backgroundImage=`url(${src})`; bg.style.opacity='1'; }, 200);
+      } else {
+        bg.style.backgroundImage = `url(${src})`;
+      }
+      bg.classList.add('loaded');
+    };
+    img.onerror = () => { bg.style.backgroundImage='none'; bg.classList.remove('loaded'); };
+    img.src = src;
+  } else {
+    bg.style.backgroundImage = 'none';
+    bg.classList.remove('loaded');
+  }
+
+  // Song info
+  document.getElementById('hSong').textContent = p.song_name || p.title;
+  document.getElementById('hArtist').textContent = p.artist || '';
+  const moodEl = document.getElementById('hMood');
+  if (p.mood){ moodEl.textContent=p.mood; moodEl.style.display='inline-block'; }
+  else { moodEl.style.display='none'; }
+
+  document.getElementById('heroIdx').innerHTML = String(heroIdx+1).padStart(2,'0') + ' <span>/</span> ' + String(posts.length).padStart(2,'0');
+  document.getElementById('heroCounter').innerHTML = `<b>${heroIdx+1}</b> / ${posts.length}`;
+
+  // Note preview
+  const body = document.getElementById('hnBody');
+  const hnActions = document.getElementById('hnActions');
+  const hnPlayBtn = document.getElementById('hnPlayBtn');
+  if (p.title || p.content){
+    const cleanText = p.content ? p.content.replace(/<[^>]+>/g,'') : '';
+    body.innerHTML = `<h3 class="hn-post-title">${p.title||''}</h3><div class="hn-date">${fmtDate(p.created_at)}</div><p class="hn-preview-text">${cleanText.slice(0,180)}${cleanText.length>180?'…':''}</p>`;
+    hnActions.style.display = 'flex';
+    hnPlayBtn.style.display = p.spotify_url ? 'inline-flex' : 'none';
+  } else {
+    body.innerHTML = '<div class="hn-empty">// 目前沒有感想</div>';
+    hnActions.style.display = 'none';
+  }
+
+  document.getElementById('heroContent').style.opacity = '1';
+
+  // Spotify strip
+  updateSpotifyStrip(p);
+
+  // Sync scroll cards
+  document.querySelectorAll('.track-card').forEach((c,i)=>c.classList.toggle('is-active',i===heroIdx));
+  const active = document.querySelector('.track-card.is-active');
+  if (active) active.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+}
+
+// ── SPOTIFY STRIP ──
+function updateSpotifyStrip(p){
+  const strip = document.getElementById('spStrip');
+  const player = document.getElementById('spStripPlayer');
+  const songLabel = document.getElementById('spStripSong');
+  if (p && p.spotify_url){
+    strip.style.display = 'block';
+    const embed = spEmbedUrl(p.spotify_url);
+    if (player.src !== embed) player.src = embed;
+    const name = (p.song_name || p.title || '');
+    songLabel.textContent = p.artist ? `${name} — ${p.artist}` : name;
+  } else {
+    strip.style.display = 'none';
+    player.src = '';
+  }
+}
+
+function navHero(dir){ renderHero(heroIdx+dir, true); }
+function shuffleHero(){
+  if(posts.length<=1) return;
+  let n=Math.floor(Math.random()*posts.length);
+  if(n===heroIdx) n=(n+1)%posts.length;
+  renderHero(n, true);
+}
+
+// ── SCROLL TRACK ──
+function renderTrack(){
+  const track = document.getElementById('scrollTrack');
+  document.getElementById('scrollCount').textContent = posts.length + ' 篇';
+  if (!posts.length){
+    track.innerHTML = `<div class="track-empty">還沒有音樂筆記。<a href="admin.html">→ 前往後台新增</a></div>`;
+    return;
+  }
+  track.innerHTML = posts.map((p,i) => `
+    <div class="track-card ${i===heroIdx?'is-active':''}" onclick="selectCard(${i})">
+      ${p.cover_url
+        ? `<img class="tc-cover" src="${p.cover_url}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="tc-cover-placeholder" style="display:none;">♪</div>`
+        : `<div class="tc-cover-placeholder">♪</div>`}
+      <div class="tc-active-overlay"><div class="tc-active-bars"><span></span><span></span><span></span><span></span></div></div>
+      <div class="tc-info">
+        <div class="tc-song">${p.song_name||p.title}</div>
+        <div class="tc-artist">${p.artist||'—'}</div>
+        ${p.mood?`<span class="tc-mood">${p.mood}</span>`:''}
+        <div class="tc-date">${fmtDate(p.created_at)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectCard(i){
+  renderHero(i, true);
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ── GLASS MODAL ──
+function openModal(){
+  const p = posts[heroIdx];
+  if (!p) return;
+  const spUrl = p.spotify_url ? spEmbedUrl(p.spotify_url) : '';
+  const coverHtml = p.cover_url
+    ? `<img class="gm-cover" src="${p.cover_url}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="gm-cover-ph" style="display:none;">♪</div>`
+    : `<div class="gm-cover-ph">♪</div>`;
+
+  document.getElementById('glassContent').innerHTML = `
+    <div class="gm-header">
+      ${coverHtml}
+      <div class="gm-meta">
+        <div class="gm-song">${p.song_name||p.title}</div>
+        <div class="gm-artist">${p.artist||''}</div>
+        <div class="gm-chips">
+          ${p.mood?`<span class="chip orange">${p.mood}</span>`:''}
+          ${p.tag?`<span class="chip">${p.tag}</span>`:''}
+          <span class="chip">${fmtDate(p.created_at)}</span>
+          ${spUrl?`<span class="chip green">♫ Spotify</span>`:''}
+        </div>
+      </div>
+    </div>
+    ${spUrl?`<div class="gm-spotify"><iframe src="${spUrl}" height="152" allow="autoplay;clipboard-write;encrypted-media;fullscreen;picture-in-picture" loading="lazy"></iframe></div>`:''}
+    <div class="gm-divider"></div>
+    <div class="gm-body">
+      <div class="gm-post-title">${p.title}</div>
+      <div class="gm-post-date">${fmtDate(p.created_at)}</div>
+      <div class="gm-post-content">${p.content||''}${p.image_url?`<img src="${p.image_url}" alt="">`:''}
+      </div>
+      ${p.video_url?`<div class="gm-video"><iframe src="${getYTEmbed(p.video_url)}" allowfullscreen></iframe></div>`:''}
+    </div>
+  `;
+  document.getElementById('glassModal').scrollTop = 0;
+  document.getElementById('glassOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(){
+  document.getElementById('glassOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function handleOverlayClick(e){
+  if(e.target === document.getElementById('glassOverlay')) closeModal();
+}
+
+// ── INIT ──
+async function init(){
+  try {
+    const mh = JSON.parse(localStorage.getItem('ms_music_hero')||'{}');
+    if(mh.url){
+      const bg = document.getElementById('heroBg');
+      bg.style.backgroundImage = `url(${mh.url})`;
+      bg.style.backgroundPosition = `${mh.x||50}% ${mh.y||50}%`;
+      bg.classList.add('loaded');
+    }
+  } catch(e){}
+
+  try {
+    posts = await fetchPosts('music');
+    document.getElementById('heroLoading').classList.add('out');
+    if(posts.length){
+      heroIdx = Math.floor(Math.random()*posts.length);
+      renderHero(heroIdx, false);
+    } else {
+      document.getElementById('heroLoading').querySelector('.hl-text').textContent = '// 目前還沒有音樂筆記';
+      document.getElementById('heroContent').style.opacity = '1';
+    }
+    renderTrack();
+  } catch(e){
+    document.getElementById('heroLoading').querySelector('.hl-text').textContent = '// 載入失敗';
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if(document.getElementById('glassOverlay').classList.contains('open')){
+    if(e.key==='Escape') closeModal();
+    return;
+  }
+  if(e.key==='ArrowLeft') navHero(-1);
+  if(e.key==='ArrowRight') navHero(1);
+  if(e.key==='r'||e.key==='R') shuffleHero();
+});
+
+init();
+</script>
+</body>
+</html>
