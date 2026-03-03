@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="docTitle">— MIND SPACE</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@300;400;500;700&family=Space+Mono:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<style>
+:root{
+  --black:#0a0a0a;
+  --white:#f0ede8;
+  --orange:#ff4d00;
+  --gray:#1a1a1a;
+  --gray2:#2a2a2a;
+  --text-muted:#666;
+  --text-body:#ccc9c3;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--white);font-family:'Noto Sans TC',sans-serif;font-weight:300;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");opacity:0.025;pointer-events:none;z-index:1000;}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;justify-content:space-between;align-items:center;padding:20px 40px;background:linear-gradient(to bottom,rgba(10,10,10,0.96),transparent);}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.15em;color:var(--white);text-decoration:none;}
+.nav-back{font-family:'Space Mono',monospace;font-size:0.6rem;letter-spacing:0.2em;color:var(--text-muted);text-decoration:none;text-transform:uppercase;transition:color 0.2s;}
+.nav-back:hover{color:var(--orange);}
+
+/* ── PAGE HEADER (list view) ── */
+.page-header{padding:130px 40px 72px;border-bottom:1px solid var(--gray2);position:relative;overflow:hidden;}
+.page-icon{position:absolute;right:-20px;bottom:-60px;font-size:300px;color:rgba(255,77,0,0.04);user-select:none;line-height:1;}
+.page-tag{font-family:'Space Mono',monospace;font-size:0.6rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--orange);margin-bottom:20px;}
+.page-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(60px,10vw,120px);line-height:0.9;margin-bottom:24px;}
+.page-desc{color:var(--text-muted);font-size:0.9rem;line-height:1.8;max-width:480px;}
+
+/* ── POSTS LIST ── */
+.posts-section{padding:56px 40px 80px;}
+.section-label{font-family:'Space Mono',monospace;font-size:0.6rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--orange);margin-bottom:40px;display:flex;align-items:center;gap:16px;}
+.section-label::after{content:'';flex:1;height:1px;background:var(--gray2);}
+.posts-list{display:flex;flex-direction:column;gap:0;}
+
+/* ── POST CARD ── */
+.post-card{background:var(--gray);border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;transition:background 0.25s;position:relative;overflow:hidden;}
+.post-card:hover{background:var(--gray2);}
+.post-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--orange);transform:scaleY(0);transition:transform 0.3s;transform-origin:bottom;}
+.post-card:hover::before{transform:scaleY(1);}
+.card-inner{display:grid;grid-template-columns:1fr 180px;gap:28px;padding:32px 40px;align-items:center;}
+.card-no-img .card-inner{grid-template-columns:1fr;}
+.card-thumb{width:180px;height:120px;object-fit:cover;border:1px solid rgba(255,255,255,0.06);flex-shrink:0;}
+.card-meta{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.card-tag{background:rgba(255,77,0,0.12);color:var(--orange);font-family:'Space Mono',monospace;font-size:0.5rem;letter-spacing:0.1em;padding:3px 9px;}
+.card-date{font-family:'Space Mono',monospace;font-size:0.5rem;color:var(--text-muted);}
+.card-title{font-family:'Noto Sans TC',sans-serif;font-size:1.25rem;font-weight:500;line-height:1.4;margin-bottom:8px;transition:color 0.25s;}
+.post-card:hover .card-title{color:var(--orange);}
+.card-excerpt{font-size:0.82rem;line-height:1.8;color:rgba(240,237,232,0.45);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.card-cta{font-family:'Space Mono',monospace;font-size:0.5rem;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;margin-top:12px;display:inline-block;transition:color 0.2s;}
+.post-card:hover .card-cta{color:var(--orange);}
+
+/* ── ARTICLE OVERLAY ── */
+.article-overlay{
+  position:fixed;inset:0;z-index:300;
+  background:var(--black);
+  overflow-y:auto;
+  opacity:0;pointer-events:none;
+  transition:opacity 0.3s cubic-bezier(0.4,0,0.2,1);
+  scrollbar-width:thin;scrollbar-color:#333 transparent;
+}
+.article-overlay.open{opacity:1;pointer-events:all;}
+.article-overlay::-webkit-scrollbar{width:4px;}
+.article-overlay::-webkit-scrollbar-thumb{background:#333;border-radius:2px;}
+
+/* sticky top bar */
+.article-topbar{
+  position:sticky;top:0;z-index:10;
+  background:rgba(10,10,10,0.94);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 40px;
+}
+.topbar-logo{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:0.15em;color:rgba(255,255,255,0.3);}
+.topbar-close{font-family:'Space Mono',monospace;font-size:0.55rem;letter-spacing:0.15em;text-transform:uppercase;background:none;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);padding:7px 16px;cursor:pointer;transition:all 0.2s;}
+.topbar-close:hover{border-color:var(--orange);color:var(--orange);}
+
+/* article body — Medium style */
+.article-wrap{max-width:680px;margin:0 auto;padding:56px 24px 100px;}
+
+/* pub meta row (like Medium top) */
+.pub-row{display:flex;align-items:center;gap:10px;margin-bottom:22px;}
+.pub-avatar{width:34px;height:34px;background:linear-gradient(135deg,rgba(255,77,0,0.3),rgba(255,77,0,0.06));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--orange);flex-shrink:0;}
+.pub-name{font-family:'Noto Sans TC',sans-serif;font-size:0.82rem;font-weight:500;color:rgba(255,255,255,0.7);}
+.pub-date{font-family:'Space Mono',monospace;font-size:0.5rem;color:rgba(255,255,255,0.28);letter-spacing:0.08em;margin-top:2px;}
+
+/* tag */
+.art-tag-chip{display:inline-block;font-family:'Space Mono',monospace;font-size:0.48rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--orange);background:rgba(255,77,0,0.07);border:1px solid rgba(255,77,0,0.18);padding:3px 10px;margin-bottom:18px;}
+
+/* title — centered, large */
+.art-title{
+  font-family:'Noto Sans TC',sans-serif;
+  font-size:clamp(26px,4vw,40px);
+  font-weight:700;
+  line-height:1.3;
+  letter-spacing:-0.01em;
+  text-align:center;
+  color:var(--white);
+  margin-bottom:10px;
+}
+.art-date-sub{
+  text-align:center;
+  font-family:'Space Mono',monospace;
+  font-size:0.52rem;
+  color:rgba(255,255,255,0.25);
+  letter-spacing:0.14em;
+  margin-bottom:32px;
+}
+.art-divider{width:48px;height:2px;background:rgba(255,77,0,0.45);margin:0 auto 36px;}
+
+/* cover image — full content width, centered */
+.art-cover{
+  width:100%;
+  max-height:500px;
+  object-fit:cover;
+  display:block;
+  margin:0 0 44px;
+  border:1px solid rgba(255,255,255,0.06);
+}
+
+/* body */
+.art-body{
+  font-size:1.05rem;
+  line-height:2.05;
+  color:var(--text-body);
+  letter-spacing:0.025em;
+}
+.art-body p{margin-bottom:1.6em;}
+.art-body h1,.art-body h2,.art-body h3,.art-body h4{
+  font-family:'Noto Sans TC',sans-serif;
+  font-weight:700;
+  color:var(--white);
+  margin:1.8em 0 0.65em;
+  line-height:1.3;
+}
+.art-body h1{font-size:1.7rem;}
+.art-body h2{font-size:1.35rem;}
+.art-body h3{font-size:1.12rem;}
+.art-body strong,.art-body b{color:var(--white);font-weight:700;}
+.art-body em,.art-body i{font-style:italic;}
+.art-body a{color:var(--orange);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;}
+.art-body img{max-width:100%;display:block;margin:2em auto;border:1px solid rgba(255,255,255,0.06);}
+.art-body blockquote{border-left:3px solid var(--orange);padding:4px 0 4px 20px;margin:1.8em 0;color:rgba(240,237,232,0.55);font-style:italic;}
+.art-body ul,.art-body ol{padding-left:1.6em;margin-bottom:1.6em;}
+.art-body li{margin-bottom:0.45em;}
+.art-body hr{border:none;border-top:1px solid rgba(255,255,255,0.08);margin:2em 0;}
+.art-body figure{margin:2.5em 0;text-align:center;}
+.art-body figure img{width:100%;}
+.art-body figcaption{font-family:'Space Mono',monospace;font-size:0.5rem;color:rgba(255,255,255,0.28);margin-top:8px;letter-spacing:0.08em;}
+
+/* video embed */
+.art-video{position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:2.5em 0;}
+.art-video iframe{position:absolute;inset:0;width:100%;height:100%;border:none;}
+
+/* states */
+.loading{text-align:center;padding:60px;font-family:'Space Mono',monospace;font-size:0.65rem;color:var(--text-muted);letter-spacing:0.15em;}
+.empty-state{text-align:center;padding:80px 40px;color:var(--text-muted);}
+.empty-state .big-char{font-size:80px;display:block;margin-bottom:20px;opacity:0.2;}
+.empty-state p{font-family:'Space Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;}
+
+@media(max-width:768px){
+  nav{padding:16px 20px;}
+  .page-header,.posts-section{padding-left:20px;padding-right:20px;}
+  .card-inner{grid-template-columns:1fr!important;padding:22px 20px;}
+  .card-thumb{width:100%;height:180px;}
+  .article-topbar{padding:12px 20px;}
+  .article-wrap{padding:36px 20px 80px;}
+  .art-title{font-size:1.6rem;}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo">MIND SPACE</a>
+  <a href="index.html" class="nav-back">← Back</a>
+</nav>
+
+<header class="page-header">
+  <div class="page-icon" id="pageIcon"></div>
+  <p class="page-tag" id="pageTag"></p>
+  <h1 class="page-title" id="pageTitle"></h1>
+  <p class="page-desc" id="pageDesc"></p>
+</header>
+
+<section class="posts-section">
+  <p class="section-label" id="sectionLabel"></p>
+  <div class="posts-list" id="postsList">
+    <div class="loading">載入中...</div>
+  </div>
+</section>
+
+<!-- Article overlay -->
+<div class="article-overlay" id="articleOverlay">
+  <div class="article-topbar">
+    <span class="topbar-logo">MIND SPACE</span>
+    <button class="topbar-close" onclick="closeArticle()">✕ 關閉</button>
+  </div>
+  <div class="article-wrap" id="articleWrap"></div>
+</div>
+
+<script>
+const pageConfig = {
+  explore:{
+    tag:'// 02 — EXPLORE',title:'我在<br>探索世界',
+    desc:'旅行的足跡、城市的溫度、異文化的衝擊。',
+    icon:'◎',label:'探索記錄 — Exploration Journal',
+    docTitle:'我在探索世界 — MIND SPACE',pubName:'探索地分心'
+  },
+  tech:{
+    tag:'// 03 — TECH & INVESTMENT',title:'科技投資<br>思考',
+    desc:'科技趨勢的觀察、投資邏輯的梳理、產業變革的思考。',
+    icon:'◈',label:'思考記錄 — Tech Thoughts',
+    docTitle:'科技投資思考 — MIND SPACE',pubName:'專注地分心'
+  },
+  marketing:{
+    tag:'// 04 — MARKETING',title:'行銷專案<br>思考',
+    desc:'品牌策略、消費者洞察、創意執行。',
+    icon:'◉',label:'行銷記錄 — Marketing Cases',
+    docTitle:'行銷專案思考 — MIND SPACE',pubName:'行銷地分心'
+  }
+};
+
+const path = window.location.pathname;
+let category = 'explore';
+if (path.includes('tech')) category = 'tech';
+else if (path.includes('marketing')) category = 'marketing';
+
+const cfg = pageConfig[category];
+document.title = cfg.docTitle;
+document.getElementById('pageTag').textContent = cfg.tag;
+document.getElementById('pageTitle').innerHTML = cfg.title;
+document.getElementById('pageDesc').textContent = cfg.desc;
+document.getElementById('pageIcon').textContent = cfg.icon;
+document.getElementById('sectionLabel').textContent = cfg.label;
+
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS_LONG  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function fmtShort(d){ const dt=new Date(d); return `${MONTHS_SHORT[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()}`; }
+function fmtLong(d){ const dt=new Date(d); return `${MONTHS_LONG[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()}`; }
+function getYTEmbed(url){ const m=url.match(/(?:youtu\.be\/|youtube\.com\/watch\?v=)([^&\s]+)/); return m?`https://www.youtube.com/embed/${m[1]}`:url; }
+
+let allPosts = [];
+
+async function loadPosts(){
+  const list = document.getElementById('postsList');
+  try {
+    allPosts = await fetchPosts(category);
+    if (!allPosts.length){
+      list.innerHTML = `<div class="empty-state">
+        <span class="big-char">${cfg.icon}</span>
+        <p>還沒有文章。<br>前往後台新增第一篇吧！</p>
+        <br><a href="admin.html" style="color:var(--orange);font-family:'Space Mono',monospace;font-size:0.65rem;letter-spacing:0.2em;margin-top:16px;display:inline-block;">→ 前往後台上稿</a>
+      </div>`;
+      return;
+    }
+
+    list.innerHTML = allPosts.map((p,i)=>{
+      const raw = p.content ? p.content.replace(/<[^>]+>/g,'') : '';
+      const excerpt = raw.slice(0,110) + (raw.length > 110 ? '...' : '');
+      const hasImg = !!p.image_url;
+      return `
+        <article class="post-card ${hasImg?'':'card-no-img'}" onclick="openArticle(${i})">
+          <div class="card-inner">
+            <div>
+              <div class="card-meta">
+                ${p.tag ? `<span class="card-tag">${p.tag}</span>` : ''}
+                <span class="card-date">${fmtShort(p.created_at)}</span>
+              </div>
+              <h2 class="card-title">${p.title}</h2>
+              <p class="card-excerpt">${excerpt}</p>
+              <span class="card-cta">閱讀全文 →</span>
+            </div>
+            ${hasImg ? `<img class="card-thumb" src="${p.image_url}" alt="" loading="lazy">` : ''}
+          </div>
+        </article>`;
+    }).join('');
+  } catch(e){
+    list.innerHTML = `<div class="empty-state"><p>載入失敗，請確認 Supabase 設定。</p></div>`;
+  }
+}
+
+function openArticle(i){
+  const p = allPosts[i];
+  if (!p) return;
+
+  // Process body: if plain text wrap in <p>, otherwise render HTML
+  let body = p.content || '';
+  if (!/<[a-z][\s\S]*>/i.test(body)){
+    body = body.split('\n\n').filter(Boolean)
+      .map(b=>`<p>${b.replace(/\n/g,'<br>')}</p>`).join('');
+  }
+
+  document.getElementById('articleWrap').innerHTML = `
+    <div class="pub-row">
+      <div class="pub-avatar">✦</div>
+      <div>
+        <div class="pub-name">${cfg.pubName}</div>
+        <div class="pub-date">${fmtShort(p.created_at)}</div>
+      </div>
+    </div>
+
+    ${p.tag ? `<span class="art-tag-chip">${p.tag}</span>` : ''}
+
+    <h1 class="art-title">${p.title}</h1>
+    <div class="art-date-sub">${fmtLong(p.created_at)}</div>
+    <div class="art-divider"></div>
+
+    ${p.image_url ? `<img class="art-cover" src="${p.image_url}" alt="">` : ''}
+
+    <div class="art-body">${body}</div>
+
+    ${p.video_url ? `<div class="art-video"><iframe src="${getYTEmbed(p.video_url)}" allowfullscreen allow="autoplay;encrypted-media"></iframe></div>` : ''}
+  `;
+
+  const overlay = document.getElementById('articleOverlay');
+  overlay.scrollTop = 0;
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeArticle(){
+  document.getElementById('articleOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e=>{
+  if (e.key==='Escape') closeArticle();
+});
+
+loadPosts();
+</script>
+</body>
+</html>
